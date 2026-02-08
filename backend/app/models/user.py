@@ -25,7 +25,9 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    invite_code: Mapped["InviteCode | None"] = relationship(back_populates="users_invited")
+    invite_code: Mapped["InviteCode | None"] = relationship(
+        back_populates="users_invited", foreign_keys=[invited_by_code_id]
+    )
 
 
 class InviteCode(Base):
@@ -44,4 +46,6 @@ class InviteCode(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     creator: Mapped["User | None"] = relationship(foreign_keys=[created_by_user_id])
-    users_invited: Mapped[list["User"]] = relationship(back_populates="invite_code")
+    users_invited: Mapped[list["User"]] = relationship(
+        back_populates="invite_code", foreign_keys="[User.invited_by_code_id]"
+    )

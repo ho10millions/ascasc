@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     PROXY_URL: str = ""
     PROXY_ROTATION_ENABLED: bool = False
 
-    model_config = {"env_file": ".env", "extra": "ignore"}
+    model_config = {"env_file": "../.env", "extra": "ignore", "env_file_encoding": "utf-8"}
 
 
 settings = Settings()
