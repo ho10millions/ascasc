@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Query
+import asyncio
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_admin
@@ -112,3 +114,31 @@ async def list_scrape_jobs(
         }
         for j in jobs
     ]
+
+
+@router.post("/scrape-now")
+async def trigger_scrape(
+    _admin: User = Depends(require_admin),
+):
+    """Manually trigger a full scrape cycle."""
+    from app.main import scraper_status
+
+    if scraper_status["running"]:
+        return {"status": "already_running", "message": "Scraper is already running"}
+
+    async def _run_scrape():
+        from app.scrapers.scheduler import run_full_scrape_cycle
+        from datetime import datetime, timezone
+
+        scraper_status["running"] = True
+        try:
+            await run_full_scrape_cycle()
+            scraper_status["last_run"] = datetime.now(timezone.utc).isoformat()
+            scraper_status["last_result"] = "success"
+        except Exception as e:
+            scraper_status["last_result"] = f"error: {str(e)[:200]}"
+        finally:
+            scraper_status["running"] = False
+
+    asyncio.create_task(_run_scrape())
+    return {"status": "started", "message": "Scrape cycle started in background"}

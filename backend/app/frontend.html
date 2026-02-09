@@ -17,6 +17,8 @@ input:focus,select:focus{border-color:var(--accent)}
 .btn-primary:hover{background:#d63050}
 .btn-secondary{background:var(--accent2);color:#fff}
 .btn-secondary:hover{background:#0a2540}
+.btn-success{background:var(--green);color:#000}
+.btn-success:hover{background:#00b868}
 .btn-sm{padding:5px 12px;font-size:12px}
 
 /* Layout */
@@ -42,6 +44,16 @@ input:focus,select:focus{border-color:var(--accent)}
 .card .value.green{color:var(--green)}
 .card .value.red{color:var(--red)}
 .card .value.yellow{color:var(--yellow)}
+
+/* Scraper status bar */
+.scraper-bar{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:15px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:15px}
+.scraper-bar .status-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px}
+.scraper-bar .status-dot.running{background:var(--yellow);animation:pulse 1.5s infinite}
+.scraper-bar .status-dot.idle{background:var(--green)}
+.scraper-bar .status-dot.error{background:var(--red)}
+.scraper-bar .info{flex:1;font-size:13px;color:var(--text2)}
+.scraper-bar .info strong{color:var(--text)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* Table */
 .table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden}
@@ -114,6 +126,7 @@ const state = {
   page: 'dashboard',
   arbitrageData: null,
   statsData: null,
+  scraperStatus: null,
   marketplaces: null,
   itemsData: null,
   adminUsers: null,
@@ -123,6 +136,8 @@ const state = {
   loading: false,
   error: ''
 };
+
+let scraperPollInterval = null;
 
 // ============== API ==============
 const API = '/api/v1';
@@ -146,6 +161,11 @@ async function api(path, opts = {}) {
     const err = await res.json().catch(() => ({ detail: 'Server error' }));
     throw new Error(err.detail || 'Error');
   }
+  return res.json();
+}
+
+async function apiRaw(path) {
+  const res = await fetch(path);
   return res.json();
 }
 
@@ -183,7 +203,23 @@ function logout() {
   state.token = null; state.refreshToken = null; state.user = null;
   localStorage.removeItem('scrooge_session');
   state.page = 'login';
+  if (scraperPollInterval) { clearInterval(scraperPollInterval); scraperPollInterval = null; }
   render();
+}
+
+// ============== Scraper Status Polling ==============
+function startScraperPolling() {
+  if (scraperPollInterval) return;
+  pollScraperStatus();
+  scraperPollInterval = setInterval(pollScraperStatus, 5000);
+}
+
+async function pollScraperStatus() {
+  try {
+    state.scraperStatus = await apiRaw('/api/v1/scraper-status');
+    const bar = document.getElementById('scraper-bar');
+    if (bar) bar.innerHTML = renderScraperBarInner();
+  } catch {}
 }
 
 // ============== Render Engine ==============
@@ -197,6 +233,7 @@ function render() {
     else app.innerHTML = renderLogin();
   } else {
     app.innerHTML = renderLayout();
+    startScraperPolling();
     loadPageData();
   }
   bindEvents();
@@ -257,12 +294,38 @@ function renderPage() {
   }
 }
 
+// ============== Scraper Status Bar ==============
+function renderScraperBar() {
+  return `<div class="scraper-bar" id="scraper-bar">${renderScraperBarInner()}</div>`;
+}
+
+function renderScraperBarInner() {
+  const ss = state.scraperStatus;
+  if (!ss) return `<div class="info"><span class="status-dot idle"></span> <strong>Scraper:</strong> Loading status...</div>`;
+
+  const isRunning = ss.running;
+  const dotClass = isRunning ? 'running' : (ss.last_result === 'success' ? 'idle' : (ss.last_result ? 'error' : 'idle'));
+  const statusText = isRunning ? 'Scraping in progress...' : (ss.last_result === 'success' ? 'Idle' : (ss.last_result || 'Waiting for first run...'));
+  const lastRun = ss.last_run ? new Date(ss.last_run).toLocaleString() : 'Never';
+  const isAdmin = state.user && state.user.is_admin;
+
+  return `
+    <div class="info">
+      <span class="status-dot ${dotClass}"></span>
+      <strong>Scraper:</strong> ${statusText}
+      &nbsp;&middot;&nbsp; Last run: ${lastRun}
+    </div>
+    ${isAdmin && !isRunning ? '<button class="btn btn-success btn-sm" id="btn-scrape-now">Start Scraping Now</button>' : ''}
+    ${isRunning ? '<span style="color:var(--yellow);font-size:12px"><div class="spinner" style="width:16px;height:16px;border-width:2px;vertical-align:middle;display:inline-block"></div> Working...</span>' : ''}`;
+}
+
 // ============== Dashboard ==============
 function renderDashboard() {
   const s = state.statsData;
   if (!s) return '<div class="loading"><div class="spinner"></div><p>Loading...</p></div>';
   return `
     <h1 class="page-title">Dashboard</h1>
+    ${renderScraperBar()}
     <div class="cards">
       <div class="card"><div class="label">Active Opportunities</div><div class="value green">${s.active_opportunities}</div></div>
       <div class="card"><div class="label">High Value (50%+)</div><div class="value yellow">${s.high_value_opportunities}</div></div>
@@ -279,6 +342,7 @@ function renderArbitrage() {
   const f = state.filters;
   return `
     <h1 class="page-title">Arbitrage Hunter<small>Buy cheap, sell on Steam</small></h1>
+    ${renderScraperBar()}
     <div class="filters">
       <div class="field"><label>Min Profit %</label><input type="number" id="f-min-profit" value="${f.min_profit_pct}" min="0"></div>
       <div class="field"><label>Game</label><select id="f-game"><option value="">All</option><option value="cs2" ${f.game==='cs2'?'selected':''}>CS2</option><option value="dota2" ${f.game==='dota2'?'selected':''}>Dota 2</option></select></div>
@@ -290,7 +354,7 @@ function renderArbitrage() {
 }
 
 function renderArbitrageTable(data, showPagination) {
-  if (!data || !data.items || data.items.length === 0) return '<div class="table-wrap" style="padding:30px;text-align:center;color:var(--text2)">No opportunities found. Run scrapers to collect data.</div>';
+  if (!data || !data.items || data.items.length === 0) return '<div class="table-wrap" style="padding:30px;text-align:center;color:var(--text2)">No opportunities found yet. Scraper will collect data automatically (check status above).</div>';
   let html = `<div class="table-wrap"><table>
     <thead><tr><th>Item</th><th>Game</th><th>Buy From</th><th>Buy Price</th><th>Steam Price</th><th>After Fee</th><th>Profit $</th><th>Profit %</th></tr></thead><tbody>`;
   for (const o of data.items) {
@@ -332,7 +396,7 @@ function renderItems() {
 
 function renderItemsTable() {
   const d = state.itemsData;
-  if (!d || !d.items || d.items.length === 0) return '<div class="table-wrap" style="padding:30px;text-align:center;color:var(--text2)">No items found.</div>';
+  if (!d || !d.items || d.items.length === 0) return '<div class="table-wrap" style="padding:30px;text-align:center;color:var(--text2)">No items found. Wait for scraper to collect data.</div>';
   let html = `<div class="table-wrap"><table>
     <thead><tr><th>Name</th><th>Game</th><th>Type</th><th>Rarity</th><th>Added</th></tr></thead><tbody>`;
   for (const i of d.items) {
@@ -380,6 +444,7 @@ function renderAdmin() {
   if (!state.user || !state.user.is_admin) return '<p>Access denied</p>';
   return `
     <h1 class="page-title">Admin Panel</h1>
+    ${renderScraperBar()}
     <div style="display:flex;gap:10px;margin-bottom:20px">
       <button class="btn btn-secondary btn-sm" data-admin-tab="users" id="at-users">Users</button>
       <button class="btn btn-secondary btn-sm" data-admin-tab="codes" id="at-codes">Invite Codes</button>
@@ -429,8 +494,7 @@ async function loadPageData() {
       case 'dashboard':
         if (!state.statsData) state.statsData = await api('/arbitrage/stats');
         if (!state.arbitrageData) {
-          const d = await api('/arbitrage?min_profit_pct=50&sort_by=profit_pct&sort_order=desc&per_page=10');
-          state.arbitrageData = d;
+          state.arbitrageData = await api('/arbitrage?min_profit_pct=50&sort_by=profit_pct&sort_order=desc&per_page=10');
         }
         renderPageContent();
         break;
@@ -529,9 +593,9 @@ function bindEvents() {
       const p = el.dataset.page;
       if (p !== state.page) {
         state.page = p;
-        // Reset page-specific cached data to force reload
         if (p === 'arbitrage') state.arbitrageData = null;
         if (p === 'items') state.itemsData = null;
+        if (p === 'dashboard') { state.statsData = null; state.arbitrageData = null; }
         render();
       }
     });
@@ -541,6 +605,14 @@ function bindEvents() {
 }
 
 function bindPageEvents() {
+  // Scrape now button
+  on('btn-scrape-now', 'click', async () => {
+    try {
+      await api('/admin/scrape-now', { method: 'POST' });
+      pollScraperStatus();
+    } catch (e) { alert('Error: ' + e.message); }
+  });
+
   // Arbitrage filters
   on('btn-apply-filters', 'click', () => {
     state.filters.min_profit_pct = parseFloat(val('f-min-profit')) || 0;
