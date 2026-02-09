@@ -1,12 +1,10 @@
 """Scheduler for periodic scraping tasks."""
 
-import asyncio
 import logging
 from datetime import datetime, timezone
 
 from sqlalchemy import select
 
-from app.config import settings
 from app.db.session import async_session_maker
 from app.models.marketplace import Marketplace
 from app.scrapers.registry import get_scraper
@@ -79,22 +77,14 @@ async def run_full_scrape_cycle():
         logger.info(f"Scraping {mkt.name}...")
         await run_scraper_for_marketplace(mkt)
 
-    # Scrape other marketplaces concurrently (with concurrency limit)
-    semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_SCRAPERS)
-
-    async def _scrape_with_limit(mkt):
-        async with semaphore:
+    # Scrape other marketplaces SEQUENTIALLY (SQLite cannot handle parallel writes)
+    for mkt in other_mkts:
+        try:
             logger.info(f"Scraping {mkt.name}...")
-            return await run_scraper_for_marketplace(mkt)
-
-    tasks = [_scrape_with_limit(mkt) for mkt in other_mkts]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    for mkt, res in zip(other_mkts, results):
-        if isinstance(res, Exception):
-            logger.error(f"Scraper for {mkt.name} failed: {res}")
-        else:
+            res = await run_scraper_for_marketplace(mkt)
             logger.info(f"Scraper for {mkt.name}: {res}")
+        except Exception as e:
+            logger.error(f"Scraper for {mkt.name} failed: {e}")
 
     # Calculate arbitrage opportunities
     await run_arbitrage_calculation()
