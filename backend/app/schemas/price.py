@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 
 from pydantic import BaseModel
@@ -6,7 +5,7 @@ from pydantic import BaseModel
 
 class PriceSnapshotResponse(BaseModel):
     id: int
-    item_id: uuid.UUID
+    item_id: str
     marketplace_id: int
     marketplace_name: str | None = None
     marketplace_slug: str | None = None
@@ -27,7 +26,7 @@ class PriceComparisonEntry(BaseModel):
 
 
 class ItemPriceComparison(BaseModel):
-    item_id: uuid.UUID
+    item_id: str
     market_hash_name: str
     game: str
     steam_price: float | None

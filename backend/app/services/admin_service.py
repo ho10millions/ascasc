@@ -1,6 +1,4 @@
-import uuid
-
-from sqlalchemy import func, select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.marketplace import Marketplace
@@ -13,7 +11,7 @@ async def get_all_users(db: AsyncSession) -> list[User]:
     return list(result.scalars().all())
 
 
-async def toggle_user_active(db: AsyncSession, user_id: uuid.UUID, is_active: bool) -> User | None:
+async def toggle_user_active(db: AsyncSession, user_id: str, is_active: bool) -> User | None:
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user:
@@ -27,7 +25,7 @@ async def get_all_invite_codes(db: AsyncSession) -> list[InviteCode]:
     return list(result.scalars().all())
 
 
-async def deactivate_invite_code(db: AsyncSession, code_id: uuid.UUID) -> InviteCode | None:
+async def deactivate_invite_code(db: AsyncSession, code_id: str) -> InviteCode | None:
     result = await db.execute(select(InviteCode).where(InviteCode.id == code_id))
     code = result.scalar_one_or_none()
     if code:

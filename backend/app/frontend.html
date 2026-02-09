@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrooge's Price Aggregator</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f0f23;--bg2:#1a1a2e;--bg3:#16213e;--accent:#e94560;--accent2:#0f3460;--green:#00d27a;--red:#e94560;--yellow:#f5a623;--text:#eee;--text2:#aab;--border:#2a2a4a}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+a{color:var(--accent);text-decoration:none}
+button{cursor:pointer;border:none;font-family:inherit;font-size:14px}
+input,select{font-family:inherit;font-size:14px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 12px;outline:none}
+input:focus,select:focus{border-color:var(--accent)}
+.btn{padding:8px 20px;border-radius:6px;font-weight:600;transition:all .2s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#d63050}
+.btn-secondary{background:var(--accent2);color:#fff}
+.btn-secondary:hover{background:#0a2540}
+.btn-sm{padding:5px 12px;font-size:12px}
+
+/* Layout */
+#app{display:flex;min-height:100vh}
+.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);padding:20px 0;display:flex;flex-direction:column;position:fixed;height:100vh;z-index:10}
+.sidebar .logo{padding:0 20px 20px;border-bottom:1px solid var(--border);font-size:18px;font-weight:700;color:var(--accent)}
+.sidebar .logo span{color:var(--text);font-size:11px;display:block;margin-top:2px;font-weight:400}
+.sidebar nav{flex:1;padding:15px 0}
+.sidebar nav a{display:flex;align-items:center;padding:10px 20px;color:var(--text2);transition:all .15s;gap:10px;font-size:14px}
+.sidebar nav a:hover,.sidebar nav a.active{background:var(--bg3);color:var(--text)}
+.sidebar nav a.active{border-right:3px solid var(--accent)}
+.sidebar .user-info{padding:15px 20px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)}
+.sidebar .user-info strong{color:var(--text);display:block;margin-bottom:4px}
+.main{margin-left:220px;flex:1;padding:30px;min-height:100vh}
+.page-title{font-size:24px;font-weight:700;margin-bottom:20px}
+.page-title small{font-weight:400;color:var(--text2);font-size:14px;margin-left:10px}
+
+/* Cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:25px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px}
+.card .label{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.card .value{font-size:28px;font-weight:700}
+.card .value.green{color:var(--green)}
+.card .value.red{color:var(--red)}
+.card .value.yellow{color:var(--yellow)}
+
+/* Table */
+.table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.table-wrap table{width:100%;border-collapse:collapse}
+.table-wrap th{background:var(--bg3);text-align:left;padding:12px 15px;font-size:12px;text-transform:uppercase;color:var(--text2);letter-spacing:.5px;white-space:nowrap}
+.table-wrap td{padding:10px 15px;border-top:1px solid var(--border);font-size:13px}
+.table-wrap tr:hover td{background:rgba(233,69,96,.03)}
+.profit-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-weight:700;font-size:12px}
+.profit-badge.high{background:rgba(0,210,122,.15);color:var(--green)}
+.profit-badge.medium{background:rgba(245,166,35,.15);color:var(--yellow)}
+.profit-badge.low{background:rgba(233,69,96,.1);color:var(--red)}
+
+/* Filters */
+.filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;align-items:flex-end}
+.filters .field{display:flex;flex-direction:column;gap:4px}
+.filters .field label{font-size:11px;color:var(--text2);text-transform:uppercase}
+.filters input,.filters select{min-width:140px}
+
+/* Auth */
+.auth-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
+.auth-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:40px;width:100%;max-width:400px}
+.auth-box h1{text-align:center;margin-bottom:5px;color:var(--accent)}
+.auth-box p{text-align:center;color:var(--text2);margin-bottom:25px;font-size:13px}
+.auth-box .field{margin-bottom:15px}
+.auth-box .field label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px}
+.auth-box .field input{width:100%;padding:10px 14px}
+.auth-box .btn{width:100%;padding:12px;font-size:15px}
+.auth-box .switch{text-align:center;margin-top:20px;font-size:13px;color:var(--text2)}
+.error-msg{background:rgba(233,69,96,.15);color:var(--red);padding:10px;border-radius:6px;margin-bottom:15px;font-size:13px;text-align:center}
+
+/* Pagination */
+.pagination{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:20px}
+.pagination button{padding:6px 14px;border-radius:6px;background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+.pagination button:hover{background:var(--accent2)}
+.pagination button:disabled{opacity:.4;cursor:default}
+.pagination span{font-size:13px;color:var(--text2)}
+
+/* Loading */
+.loading{text-align:center;padding:40px;color:var(--text2)}
+.spinner{display:inline-block;width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Marketplace chips */
+.mkt-link{display:inline-block;padding:2px 8px;background:var(--accent2);border-radius:4px;font-size:11px;color:var(--text)}
+
+/* Admin */
+.admin-badge{background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase}
+.invite-code{font-family:monospace;font-size:14px;background:var(--bg);padding:6px 12px;border-radius:6px;border:1px solid var(--border);user-select:all}
+.status-active{color:var(--green)}
+.status-inactive{color:var(--red)}
+
+@media(max-width:768px){
+.sidebar{width:60px}.sidebar .logo span,.sidebar nav a span,.sidebar .user-info{display:none}
+.sidebar .logo{font-size:14px;padding:0 10px 15px;text-align:center}
+.main{margin-left:60px;padding:15px}
+.filters{flex-direction:column}
+.cards{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ============== State ==============
+const state = {
+  user: null,
+  token: null,
+  refreshToken: null,
+  page: 'dashboard',
+  arbitrageData: null,
+  statsData: null,
+  marketplaces: null,
+  itemsData: null,
+  adminUsers: null,
+  adminCodes: null,
+  filters: { min_profit_pct: 50, game: '', search: '', sort_by: 'profit_pct', sort_order: 'desc', page: 1, per_page: 50 },
+  itemFilters: { game: '', search: '', page: 1, per_page: 50 },
+  loading: false,
+  error: ''
+};
+
+// ============== API ==============
+const API = '/api/v1';
+
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
+  const res = await fetch(API + path, { ...opts, headers });
+  if (res.status === 401 && state.refreshToken) {
+    const ok = await tryRefresh();
+    if (ok) {
+      headers['Authorization'] = 'Bearer ' + state.token;
+      const res2 = await fetch(API + path, { ...opts, headers });
+      if (!res2.ok) throw new Error((await res2.json()).detail || 'Error');
+      return res2.json();
+    }
+    logout();
+    throw new Error('Session expired');
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Server error' }));
+    throw new Error(err.detail || 'Error');
+  }
+  return res.json();
+}
+
+async function tryRefresh() {
+  try {
+    const res = await fetch(API + '/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: state.refreshToken })
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    state.token = data.access_token;
+    state.refreshToken = data.refresh_token;
+    state.user = data.user;
+    saveSession();
+    return true;
+  } catch { return false; }
+}
+
+function saveSession() {
+  localStorage.setItem('scrooge_session', JSON.stringify({
+    token: state.token, refreshToken: state.refreshToken, user: state.user
+  }));
+}
+
+function loadSession() {
+  try {
+    const s = JSON.parse(localStorage.getItem('scrooge_session'));
+    if (s && s.token) { state.token = s.token; state.refreshToken = s.refreshToken; state.user = s.user; }
+  } catch {}
+}
+
+function logout() {
+  state.token = null; state.refreshToken = null; state.user = null;
+  localStorage.removeItem('scrooge_session');
+  state.page = 'login';
+  render();
+}
+
+// ============== Render Engine ==============
+function $(sel, el) { return (el || document).querySelector(sel); }
+function $$(sel, el) { return [...(el || document).querySelectorAll(sel)]; }
+
+function render() {
+  const app = $('#app');
+  if (!state.user) {
+    if (state.page === 'register') app.innerHTML = renderRegister();
+    else app.innerHTML = renderLogin();
+  } else {
+    app.innerHTML = renderLayout();
+    loadPageData();
+  }
+  bindEvents();
+}
+
+function renderLogin() {
+  return `<div class="auth-page"><div class="auth-box">
+    <h1>Scrooge's</h1><p>Price Aggregator & Arbitrage Hunter</p>
+    ${state.error ? `<div class="error-msg">${state.error}</div>` : ''}
+    <div class="field"><label>Username</label><input id="login-user" type="text" placeholder="username"></div>
+    <div class="field"><label>Password</label><input id="login-pass" type="password" placeholder="password"></div>
+    <button class="btn btn-primary" id="btn-login">Login</button>
+    <div class="switch">No account? <a href="#" id="go-register">Register</a></div>
+  </div></div>`;
+}
+
+function renderRegister() {
+  return `<div class="auth-page"><div class="auth-box">
+    <h1>Register</h1><p>Need an invite code to join</p>
+    ${state.error ? `<div class="error-msg">${state.error}</div>` : ''}
+    <div class="field"><label>Username</label><input id="reg-user" type="text" placeholder="min 3 chars"></div>
+    <div class="field"><label>Email</label><input id="reg-email" type="email" placeholder="you@mail.com"></div>
+    <div class="field"><label>Password</label><input id="reg-pass" type="password" placeholder="min 6 chars"></div>
+    <div class="field"><label>Invite Code</label><input id="reg-code" type="text" placeholder="SCROOGE-ADMIN-2024"></div>
+    <button class="btn btn-primary" id="btn-register">Register</button>
+    <div class="switch">Have account? <a href="#" id="go-login">Login</a></div>
+  </div></div>`;
+}
+
+function renderLayout() {
+  const isAdmin = state.user && state.user.is_admin;
+  return `
+  <div class="sidebar">
+    <div class="logo">Scrooge's<span>Price Aggregator</span></div>
+    <nav>
+      <a href="#" data-page="dashboard" class="${state.page==='dashboard'?'active':''}"><span>Dashboard</span></a>
+      <a href="#" data-page="arbitrage" class="${state.page==='arbitrage'?'active':''}"><span>Arbitrage</span></a>
+      <a href="#" data-page="items" class="${state.page==='items'?'active':''}"><span>Items</span></a>
+      <a href="#" data-page="marketplaces" class="${state.page==='marketplaces'?'active':''}"><span>Marketplaces</span></a>
+      ${isAdmin ? `<a href="#" data-page="admin" class="${state.page==='admin'?'active':''}"><span>Admin</span></a>` : ''}
+    </nav>
+    <div class="user-info">
+      <strong>${state.user.username} ${isAdmin?'<span class="admin-badge">Admin</span>':''}</strong>
+      <a href="#" id="btn-logout">Logout</a>
+    </div>
+  </div>
+  <div class="main">${renderPage()}</div>`;
+}
+
+function renderPage() {
+  switch (state.page) {
+    case 'dashboard': return renderDashboard();
+    case 'arbitrage': return renderArbitrage();
+    case 'items': return renderItems();
+    case 'marketplaces': return renderMarketplaces();
+    case 'admin': return renderAdmin();
+    default: return renderDashboard();
+  }
+}
+
+// ============== Dashboard ==============
+function renderDashboard() {
+  const s = state.statsData;
+  if (!s) return '<div class="loading"><div class="spinner"></div><p>Loading...</p></div>';
+  return `
+    <h1 class="page-title">Dashboard</h1>
+    <div class="cards">
+      <div class="card"><div class="label">Active Opportunities</div><div class="value green">${s.active_opportunities}</div></div>
+      <div class="card"><div class="label">High Value (50%+)</div><div class="value yellow">${s.high_value_opportunities}</div></div>
+      <div class="card"><div class="label">Avg Profit %</div><div class="value">${s.avg_profit_pct}%</div></div>
+      <div class="card"><div class="label">Max Profit %</div><div class="value green">${s.max_profit_pct}%</div></div>
+      <div class="card"><div class="label">Items Tracked</div><div class="value">${s.total_items_tracked}</div></div>
+    </div>
+    <h2 style="margin-bottom:15px">Top Arbitrage Opportunities</h2>
+    ${renderArbitrageTable(state.arbitrageData, false)}`;
+}
+
+// ============== Arbitrage ==============
+function renderArbitrage() {
+  const f = state.filters;
+  return `
+    <h1 class="page-title">Arbitrage Hunter<small>Buy cheap, sell on Steam</small></h1>
+    <div class="filters">
+      <div class="field"><label>Min Profit %</label><input type="number" id="f-min-profit" value="${f.min_profit_pct}" min="0"></div>
+      <div class="field"><label>Game</label><select id="f-game"><option value="">All</option><option value="cs2" ${f.game==='cs2'?'selected':''}>CS2</option><option value="dota2" ${f.game==='dota2'?'selected':''}>Dota 2</option></select></div>
+      <div class="field"><label>Search</label><input type="text" id="f-search" value="${f.search}" placeholder="Item name..."></div>
+      <div class="field"><label>Sort</label><select id="f-sort"><option value="profit_pct" ${f.sort_by==='profit_pct'?'selected':''}>Profit %</option><option value="profit_usd" ${f.sort_by==='profit_usd'?'selected':''}>Profit $</option><option value="buy_price" ${f.sort_by==='buy_price'?'selected':''}>Price</option><option value="name" ${f.sort_by==='name'?'selected':''}>Name</option></select></div>
+      <div class="field"><label>&nbsp;</label><button class="btn btn-primary btn-sm" id="btn-apply-filters">Apply</button></div>
+    </div>
+    ${state.loading ? '<div class="loading"><div class="spinner"></div></div>' : renderArbitrageTable(state.arbitrageData, true)}`;
+}
+
+function renderArbitrageTable(data, showPagination) {
+  if (!data || !data.items || data.items.length === 0) return '<div class="table-wrap" style="padding:30px;text-align:center;color:var(--text2)">No opportunities found. Run scrapers to collect data.</div>';
+  let html = `<div class="table-wrap"><table>
+    <thead><tr><th>Item</th><th>Game</th><th>Buy From</th><th>Buy Price</th><th>Steam Price</th><th>After Fee</th><th>Profit $</th><th>Profit %</th></tr></thead><tbody>`;
+  for (const o of data.items) {
+    const cls = o.profit_pct >= 100 ? 'high' : o.profit_pct >= 50 ? 'medium' : 'low';
+    html += `<tr>
+      <td title="${esc(o.market_hash_name)}">${esc(o.market_hash_name.length > 40 ? o.market_hash_name.slice(0,37)+'...' : o.market_hash_name)}</td>
+      <td>${o.game.toUpperCase()}</td>
+      <td><a href="${esc(o.buy_marketplace_url)}" target="_blank" class="mkt-link">${esc(o.buy_marketplace_name)}</a></td>
+      <td>$${o.buy_price_usd.toFixed(2)}</td>
+      <td>$${o.steam_price_usd.toFixed(2)}</td>
+      <td>$${o.steam_price_after_fee.toFixed(2)}</td>
+      <td style="color:var(--green)">+$${o.profit_usd.toFixed(2)}</td>
+      <td><span class="profit-badge ${cls}">+${o.profit_pct.toFixed(1)}%</span></td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  if (showPagination && data.total_pages > 1) {
+    html += `<div class="pagination">
+      <button id="pg-prev" ${data.page<=1?'disabled':''}>Prev</button>
+      <span>Page ${data.page} of ${data.total_pages} (${data.total} total)</span>
+      <button id="pg-next" ${data.page>=data.total_pages?'disabled':''}>Next</button>
+    </div>`;
+  }
+  return html;
+}
+
+// ============== Items ==============
+function renderItems() {
+  const f = state.itemFilters;
+  return `
+    <h1 class="page-title">Tracked Items</h1>
+    <div class="filters">
+      <div class="field"><label>Game</label><select id="if-game"><option value="">All</option><option value="cs2" ${f.game==='cs2'?'selected':''}>CS2</option><option value="dota2" ${f.game==='dota2'?'selected':''}>Dota 2</option></select></div>
+      <div class="field"><label>Search</label><input type="text" id="if-search" value="${f.search}" placeholder="Item name..."></div>
+      <div class="field"><label>&nbsp;</label><button class="btn btn-primary btn-sm" id="btn-apply-item-filters">Search</button></div>
+    </div>
+    ${state.loading ? '<div class="loading"><div class="spinner"></div></div>' : renderItemsTable()}`;
+}
+
+function renderItemsTable() {
+  const d = state.itemsData;
+  if (!d || !d.items || d.items.length === 0) return '<div class="table-wrap" style="padding:30px;text-align:center;color:var(--text2)">No items found.</div>';
+  let html = `<div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Game</th><th>Type</th><th>Rarity</th><th>Added</th></tr></thead><tbody>`;
+  for (const i of d.items) {
+    html += `<tr>
+      <td>${esc(i.market_hash_name)}</td>
+      <td>${(i.game||'').toUpperCase()}</td>
+      <td>${esc(i.item_type||'-')}</td>
+      <td>${esc(i.rarity||'-')}</td>
+      <td>${new Date(i.created_at).toLocaleDateString()}</td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  if (d.total_pages > 1) {
+    html += `<div class="pagination">
+      <button id="ipg-prev" ${d.page<=1?'disabled':''}>Prev</button>
+      <span>Page ${d.page} of ${d.total_pages} (${d.total} total)</span>
+      <button id="ipg-next" ${d.page>=d.total_pages?'disabled':''}>Next</button>
+    </div>`;
+  }
+  return html;
+}
+
+// ============== Marketplaces ==============
+function renderMarketplaces() {
+  if (!state.marketplaces) return '<div class="loading"><div class="spinner"></div><p>Loading...</p></div>';
+  let html = `<h1 class="page-title">Marketplaces<small>${state.marketplaces.length} connected</small></h1>
+    <div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Interval</th><th>Last Scraped</th><th>URL</th></tr></thead><tbody>`;
+  for (const m of state.marketplaces) {
+    html += `<tr>
+      <td><strong>${esc(m.name)}</strong></td>
+      <td>${m.scraper_type}</td>
+      <td>${m.is_enabled ? '<span class="status-active">Active</span>' : '<span class="status-inactive">Disabled</span>'}</td>
+      <td>${m.scrape_interval_minutes} min</td>
+      <td>${m.last_scraped_at ? new Date(m.last_scraped_at).toLocaleString() : 'Never'}</td>
+      <td><a href="${esc(m.base_url)}" target="_blank" class="mkt-link">${esc(m.slug)}</a></td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  return html;
+}
+
+// ============== Admin ==============
+function renderAdmin() {
+  if (!state.user || !state.user.is_admin) return '<p>Access denied</p>';
+  return `
+    <h1 class="page-title">Admin Panel</h1>
+    <div style="display:flex;gap:10px;margin-bottom:20px">
+      <button class="btn btn-secondary btn-sm" data-admin-tab="users" id="at-users">Users</button>
+      <button class="btn btn-secondary btn-sm" data-admin-tab="codes" id="at-codes">Invite Codes</button>
+      <button class="btn btn-primary btn-sm" id="btn-gen-code">+ New Invite Code</button>
+    </div>
+    <div id="admin-content">${renderAdminUsers()}</div>`;
+}
+
+function renderAdminUsers() {
+  if (!state.adminUsers) return '<div class="loading"><div class="spinner"></div></div>';
+  let html = `<div class="table-wrap"><table>
+    <thead><tr><th>Username</th><th>Email</th><th>Admin</th><th>Status</th><th>Joined</th></tr></thead><tbody>`;
+  for (const u of state.adminUsers) {
+    html += `<tr>
+      <td><strong>${esc(u.username)}</strong></td>
+      <td>${esc(u.email)}</td>
+      <td>${u.is_admin ? '<span class="admin-badge">Admin</span>' : '-'}</td>
+      <td>${u.is_active ? '<span class="status-active">Active</span>' : '<span class="status-inactive">Blocked</span>'}</td>
+      <td>${new Date(u.created_at).toLocaleDateString()}</td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  return html;
+}
+
+function renderAdminCodes() {
+  if (!state.adminCodes) return '<div class="loading"><div class="spinner"></div></div>';
+  let html = `<div class="table-wrap"><table>
+    <thead><tr><th>Code</th><th>Uses</th><th>Admin</th><th>Status</th><th>Created</th></tr></thead><tbody>`;
+  for (const c of state.adminCodes) {
+    html += `<tr>
+      <td><span class="invite-code">${esc(c.code)}</span></td>
+      <td>${c.times_used} / ${c.max_uses}</td>
+      <td>${c.grants_admin ? 'Yes' : 'No'}</td>
+      <td>${c.is_active ? '<span class="status-active">Active</span>' : '<span class="status-inactive">Used</span>'}</td>
+      <td>${new Date(c.created_at).toLocaleDateString()}</td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  return html;
+}
+
+// ============== Data Loading ==============
+async function loadPageData() {
+  try {
+    switch (state.page) {
+      case 'dashboard':
+        if (!state.statsData) state.statsData = await api('/arbitrage/stats');
+        if (!state.arbitrageData) {
+          const d = await api('/arbitrage?min_profit_pct=50&sort_by=profit_pct&sort_order=desc&per_page=10');
+          state.arbitrageData = d;
+        }
+        renderPageContent();
+        break;
+      case 'arbitrage':
+        state.loading = true; renderPageContent();
+        const f = state.filters;
+        const params = new URLSearchParams({
+          min_profit_pct: f.min_profit_pct, sort_by: f.sort_by, sort_order: f.sort_order,
+          page: f.page, per_page: f.per_page
+        });
+        if (f.game) params.set('game', f.game);
+        if (f.search) params.set('search', f.search);
+        state.arbitrageData = await api('/arbitrage?' + params);
+        state.loading = false; renderPageContent();
+        break;
+      case 'items':
+        state.loading = true; renderPageContent();
+        const ip = state.itemFilters;
+        const iparams = new URLSearchParams({ page: ip.page, per_page: ip.per_page });
+        if (ip.game) iparams.set('game', ip.game);
+        if (ip.search) iparams.set('search', ip.search);
+        state.itemsData = await api('/items?' + iparams);
+        state.loading = false; renderPageContent();
+        break;
+      case 'marketplaces':
+        if (!state.marketplaces) state.marketplaces = await api('/marketplaces');
+        renderPageContent();
+        break;
+      case 'admin':
+        if (!state.adminUsers) state.adminUsers = await api('/admin/users');
+        if (!state.adminCodes) state.adminCodes = await api('/admin/invite-codes');
+        renderPageContent();
+        break;
+    }
+  } catch (e) {
+    console.error(e);
+    state.loading = false;
+    renderPageContent();
+  }
+}
+
+function renderPageContent() {
+  const main = $('.main');
+  if (main) { main.innerHTML = renderPage(); bindPageEvents(); }
+}
+
+// ============== Events ==============
+function bindEvents() {
+  // Auth
+  on('btn-login', 'click', async () => {
+    state.error = '';
+    const u = val('login-user'), p = val('login-pass');
+    if (!u || !p) { state.error = 'Fill all fields'; render(); return; }
+    try {
+      const data = await fetch(API + '/auth/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p })
+      }).then(r => { if (!r.ok) throw r; return r.json(); });
+      state.token = data.access_token; state.refreshToken = data.refresh_token; state.user = data.user;
+      state.error = ''; saveSession(); state.page = 'dashboard'; render();
+    } catch (e) {
+      const err = await e.json?.().catch(() => null);
+      state.error = err?.detail || 'Login failed'; render();
+    }
+  });
+
+  on('btn-register', 'click', async () => {
+    state.error = '';
+    const u = val('reg-user'), em = val('reg-email'), p = val('reg-pass'), c = val('reg-code');
+    if (!u || !em || !p || !c) { state.error = 'Fill all fields'; render(); return; }
+    try {
+      const data = await fetch(API + '/auth/register', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, email: em, password: p, invite_code: c })
+      }).then(r => { if (!r.ok) throw r; return r.json(); });
+      state.token = data.access_token; state.refreshToken = data.refresh_token; state.user = data.user;
+      state.error = ''; saveSession(); state.page = 'dashboard'; render();
+    } catch (e) {
+      const err = await e.json?.().catch(() => null);
+      state.error = err?.detail || 'Registration failed'; render();
+    }
+  });
+
+  on('go-register', 'click', (e) => { e.preventDefault(); state.page = 'register'; state.error = ''; render(); });
+  on('go-login', 'click', (e) => { e.preventDefault(); state.page = 'login'; state.error = ''; render(); });
+  on('btn-logout', 'click', (e) => { e.preventDefault(); logout(); });
+
+  // Enter key for login/register
+  onEnter('login-pass', () => $('#btn-login')?.click());
+  onEnter('reg-code', () => $('#btn-register')?.click());
+
+  // Navigation
+  $$('[data-page]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const p = el.dataset.page;
+      if (p !== state.page) {
+        state.page = p;
+        // Reset page-specific cached data to force reload
+        if (p === 'arbitrage') state.arbitrageData = null;
+        if (p === 'items') state.itemsData = null;
+        render();
+      }
+    });
+  });
+
+  bindPageEvents();
+}
+
+function bindPageEvents() {
+  // Arbitrage filters
+  on('btn-apply-filters', 'click', () => {
+    state.filters.min_profit_pct = parseFloat(val('f-min-profit')) || 0;
+    state.filters.game = val('f-game');
+    state.filters.search = val('f-search');
+    state.filters.sort_by = val('f-sort');
+    state.filters.page = 1;
+    state.arbitrageData = null;
+    loadPageData();
+  });
+  on('pg-prev', 'click', () => { state.filters.page--; state.arbitrageData = null; loadPageData(); });
+  on('pg-next', 'click', () => { state.filters.page++; state.arbitrageData = null; loadPageData(); });
+
+  // Item filters
+  on('btn-apply-item-filters', 'click', () => {
+    state.itemFilters.game = val('if-game');
+    state.itemFilters.search = val('if-search');
+    state.itemFilters.page = 1;
+    state.itemsData = null;
+    loadPageData();
+  });
+  on('ipg-prev', 'click', () => { state.itemFilters.page--; state.itemsData = null; loadPageData(); });
+  on('ipg-next', 'click', () => { state.itemFilters.page++; state.itemsData = null; loadPageData(); });
+
+  // Admin tabs
+  on('at-users', 'click', () => { const c = $('#admin-content'); if(c) c.innerHTML = renderAdminUsers(); });
+  on('at-codes', 'click', () => { const c = $('#admin-content'); if(c) c.innerHTML = renderAdminCodes(); });
+  on('btn-gen-code', 'click', async () => {
+    try {
+      await api('/admin/invite-codes', { method: 'POST', body: JSON.stringify({ max_uses: 1, grants_admin: false }) });
+      state.adminCodes = await api('/admin/invite-codes');
+      const c = $('#admin-content'); if(c) c.innerHTML = renderAdminCodes();
+    } catch (e) { alert('Error: ' + e.message); }
+  });
+
+  // Enter in search
+  onEnter('f-search', () => $('#btn-apply-filters')?.click());
+  onEnter('if-search', () => $('#btn-apply-item-filters')?.click());
+}
+
+// ============== Helpers ==============
+function on(id, event, fn) { const el = document.getElementById(id); if (el) el.addEventListener(event, fn); }
+function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function onEnter(id, fn) { on(id, 'keydown', (e) => { if (e.key === 'Enter') fn(); }); }
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ============== Init ==============
+loadSession();
+render();
+</script>
+</body>
+</html>

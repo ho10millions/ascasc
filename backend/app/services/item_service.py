@@ -1,5 +1,3 @@
-import uuid
-
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -69,16 +67,12 @@ async def get_items(
     return list(items), total
 
 
-async def get_item_by_id(db: AsyncSession, item_id: uuid.UUID) -> Item | None:
+async def get_item_by_id(db: AsyncSession, item_id: str) -> Item | None:
     result = await db.execute(select(Item).where(Item.id == item_id))
     return result.scalar_one_or_none()
 
 
-async def get_item_prices(
-    db: AsyncSession, item_id: uuid.UUID
-) -> list[dict]:
-    """Get latest price from each marketplace for an item."""
-    # Subquery: latest snapshot per marketplace
+async def get_item_prices(db: AsyncSession, item_id: str) -> list[dict]:
     latest_sub = (
         select(
             PriceSnapshot.marketplace_id,

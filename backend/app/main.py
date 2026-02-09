@@ -1,7 +1,9 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 
 from app.api.router import api_router
@@ -47,9 +49,7 @@ MARKETPLACE_SEEDS = [
 
 
 async def seed_data():
-    """Seed marketplaces and initial admin invite code."""
     async with async_session_maker() as session:
-        # Seed marketplaces
         for name, slug, url, scraper_type in MARKETPLACE_SEEDS:
             existing = await session.execute(
                 select(Marketplace).where(Marketplace.slug == slug)
@@ -59,7 +59,6 @@ async def seed_data():
                     name=name, slug=slug, base_url=url, scraper_type=scraper_type
                 ))
 
-        # Seed admin invite code
         existing_code = await session.execute(
             select(InviteCode).where(InviteCode.code == settings.ADMIN_INVITE_CODE)
         )
@@ -75,12 +74,10 @@ async def seed_data():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: create tables and seed data
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     await seed_data()
     yield
-    # Shutdown
     await engine.dispose()
 
 
@@ -93,7 +90,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -105,3 +102,22 @@ app.include_router(api_router)
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "scrooge-aggregator"}
+
+
+# ---------- Embedded HTML Frontend ----------
+
+FRONTEND_HTML = open(
+    os.path.join(os.path.dirname(__file__), "frontend.html"), "r", encoding="utf-8"
+).read() if os.path.exists(os.path.join(os.path.dirname(__file__), "frontend.html")) else "<h1>Frontend not found</h1>"
+
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_frontend():
+    return FRONTEND_HTML
+
+
+@app.get("/{path:path}", response_class=HTMLResponse)
+async def serve_frontend_catchall(path: str):
+    if path.startswith("api/") or path == "health" or path == "docs" or path == "openapi.json" or path == "redoc":
+        return None
+    return FRONTEND_HTML

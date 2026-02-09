@@ -1,5 +1,3 @@
-import uuid
-
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,7 +31,7 @@ async def list_users(
 
 @router.patch("/users/{user_id}/toggle")
 async def toggle_user(
-    user_id: uuid.UUID,
+    user_id: str,
     is_active: bool,
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(require_admin),
@@ -67,7 +65,7 @@ async def create_invite_code(
 
 @router.delete("/invite-codes/{code_id}")
 async def delete_invite_code(
-    code_id: uuid.UUID,
+    code_id: str,
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):

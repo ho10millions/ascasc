@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 
 from sqlalchemy import select
@@ -10,7 +9,7 @@ from app.models.price import PriceSnapshot
 
 async def save_price_snapshot(
     db: AsyncSession,
-    item_id: uuid.UUID,
+    item_id: str,
     marketplace_id: int,
     price_usd: float,
     listing_count: int | None = None,
@@ -26,8 +25,7 @@ async def save_price_snapshot(
     return snapshot
 
 
-async def get_latest_steam_price(db: AsyncSession, item_id: uuid.UUID) -> float | None:
-    """Get the latest Steam price for an item."""
+async def get_latest_steam_price(db: AsyncSession, item_id: str) -> float | None:
     steam_mkt = await db.execute(
         select(Marketplace).where(Marketplace.slug == "steam")
     )
@@ -47,7 +45,7 @@ async def get_latest_steam_price(db: AsyncSession, item_id: uuid.UUID) -> float 
 
 async def get_price_history(
     db: AsyncSession,
-    item_id: uuid.UUID,
+    item_id: str,
     marketplace_id: int | None = None,
     since: datetime | None = None,
     limit: int = 100,

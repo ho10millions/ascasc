@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, Field
@@ -6,7 +5,7 @@ from pydantic import BaseModel, Field
 
 class ArbitrageResponse(BaseModel):
     id: int
-    item_id: uuid.UUID
+    item_id: str
     market_hash_name: str
     game: str
     icon_url: str | None

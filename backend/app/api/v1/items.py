@@ -1,5 +1,4 @@
 import math
-import uuid
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +7,7 @@ from app.api.deps import get_current_user
 from app.core.exceptions import NotFoundException
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.item import ItemResponse, ItemWithPrices
+from app.schemas.item import ItemResponse
 from app.schemas.pagination import PaginatedResponse
 from app.schemas.price import ItemPriceComparison, PriceComparisonEntry
 from app.services.item_service import get_item_by_id, get_item_prices, get_items
@@ -38,7 +37,7 @@ async def list_items(
 
 @router.get("/{item_id}", response_model=ItemResponse)
 async def get_item(
-    item_id: uuid.UUID,
+    item_id: str,
     db: AsyncSession = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):
@@ -50,7 +49,7 @@ async def get_item(
 
 @router.get("/{item_id}/prices", response_model=ItemPriceComparison)
 async def get_item_price_comparison(
-    item_id: uuid.UUID,
+    item_id: str,
     db: AsyncSession = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):

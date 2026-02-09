@@ -1,6 +1,3 @@
-import math
-import uuid
-
 from sqlalchemy import func, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,23 +7,20 @@ from app.models.marketplace import Marketplace
 from app.models.price import PriceSnapshot
 from app.schemas.arbitrage import ArbitrageFilters
 
-STEAM_FEE_MULTIPLIER = 0.87  # Steam takes ~13% commission
+STEAM_FEE_MULTIPLIER = 0.87
 
 
 async def calculate_arbitrage_for_item(
-    db: AsyncSession, item_id: uuid.UUID, steam_price: float
+    db: AsyncSession, item_id: str, steam_price: float
 ) -> list[ArbitrageOpportunity]:
-    """Calculate arbitrage opportunities for an item against all marketplaces."""
     steam_after_fee = steam_price * STEAM_FEE_MULTIPLIER
 
-    # Deactivate old opportunities for this item
     await db.execute(
         ArbitrageOpportunity.__table__.update()
         .where(ArbitrageOpportunity.item_id == item_id)
         .values(is_active=False)
     )
 
-    # Get latest prices from non-Steam marketplaces
     latest_sub = (
         select(
             PriceSnapshot.marketplace_id,
@@ -64,7 +58,7 @@ async def calculate_arbitrage_for_item(
         profit_usd = steam_after_fee - buy_price
         profit_pct = ((steam_after_fee / buy_price) - 1) * 100
 
-        if profit_pct >= 0:  # Store all positive opportunities, filter in queries
+        if profit_pct >= 0:
             opp = ArbitrageOpportunity(
                 item_id=item_id,
                 buy_marketplace_id=marketplace.id,
@@ -85,7 +79,6 @@ async def calculate_arbitrage_for_item(
 async def get_arbitrage_opportunities(
     db: AsyncSession, filters: ArbitrageFilters
 ) -> tuple[list[dict], int]:
-    """Get filtered and paginated arbitrage opportunities."""
     base_where = [ArbitrageOpportunity.is_active.is_(True)]
 
     if filters.min_profit_pct > 0:
@@ -93,7 +86,6 @@ async def get_arbitrage_opportunities(
     if filters.max_profit_pct is not None:
         base_where.append(ArbitrageOpportunity.profit_pct <= filters.max_profit_pct)
 
-    # Join conditions
     query = (
         select(ArbitrageOpportunity, Item, Marketplace)
         .join(Item, ArbitrageOpportunity.item_id == Item.id)
@@ -107,7 +99,6 @@ async def get_arbitrage_opportunities(
         .where(*base_where)
     )
 
-    # Additional filters
     if filters.game:
         query = query.where(Item.game == filters.game)
         count_query = count_query.where(Item.game == filters.game)
@@ -127,7 +118,6 @@ async def get_arbitrage_opportunities(
         query = query.where(Item.market_hash_name.ilike(f"%{filters.search}%"))
         count_query = count_query.where(Item.market_hash_name.ilike(f"%{filters.search}%"))
 
-    # Sorting
     sort_col_map = {
         "profit_pct": ArbitrageOpportunity.profit_pct,
         "profit_usd": ArbitrageOpportunity.profit_usd,
@@ -172,7 +162,6 @@ async def get_arbitrage_opportunities(
 
 
 async def get_arbitrage_stats(db: AsyncSession) -> dict:
-    """Get summary statistics for the dashboard."""
     active_count = (
         await db.execute(
             select(func.count(ArbitrageOpportunity.id)).where(

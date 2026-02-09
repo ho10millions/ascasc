@@ -1,11 +1,10 @@
-import uuid
 from datetime import datetime
 
 from pydantic import BaseModel
 
 
 class ItemResponse(BaseModel):
-    id: uuid.UUID
+    id: str
     game: str
     market_hash_name: str
     icon_url: str | None

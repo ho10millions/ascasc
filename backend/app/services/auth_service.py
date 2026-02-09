@@ -1,5 +1,4 @@
 import secrets
-import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -18,7 +17,6 @@ from app.schemas.user import TokenResponse, UserRegister, UserResponse
 
 
 async def register_user(db: AsyncSession, data: UserRegister) -> TokenResponse:
-    # Validate invite code
     result = await db.execute(
         select(InviteCode).where(InviteCode.code == data.invite_code, InviteCode.is_active.is_(True))
     )
@@ -31,14 +29,12 @@ async def register_user(db: AsyncSession, data: UserRegister) -> TokenResponse:
     if invite.expires_at and invite.expires_at < datetime.now(timezone.utc):
         raise BadRequestException("Invite code has expired")
 
-    # Check uniqueness
     existing = await db.execute(
         select(User).where((User.username == data.username) | (User.email == data.email))
     )
     if existing.scalar_one_or_none():
         raise BadRequestException("Username or email already taken")
 
-    # Create user
     user = User(
         username=data.username,
         email=data.email,
@@ -48,14 +44,12 @@ async def register_user(db: AsyncSession, data: UserRegister) -> TokenResponse:
     )
     db.add(user)
 
-    # Increment invite usage
     invite.times_used += 1
     if invite.times_used >= invite.max_uses:
         invite.is_active = False
 
     await db.flush()
 
-    # Generate tokens
     token_data = {"sub": str(user.id), "username": user.username}
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
@@ -94,7 +88,7 @@ async def refresh_tokens(db: AsyncSession, refresh_token: str) -> TokenResponse:
         raise CredentialsException()
 
     user_id = payload.get("sub")
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
     if not user or not user.is_active:
@@ -112,7 +106,7 @@ async def refresh_tokens(db: AsyncSession, refresh_token: str) -> TokenResponse:
 
 
 async def generate_invite_code(
-    db: AsyncSession, created_by: uuid.UUID, max_uses: int = 1, grants_admin: bool = False
+    db: AsyncSession, created_by: str, max_uses: int = 1, grants_admin: bool = False
 ) -> InviteCode:
     code = f"SCR-{secrets.token_urlsafe(8).upper()}"
     invite = InviteCode(

@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ScrapedItem:
-    """Standardized item data from any marketplace."""
     market_hash_name: str
     price_usd: float
     game: str = "cs2"
@@ -27,22 +26,18 @@ class ScrapedItem:
 
 
 class BaseScraper(ABC):
-    """Abstract base class for all marketplace scrapers."""
-
     marketplace_slug: str
     marketplace_name: str
-    scraper_type: str = "api"  # api, playwright, hybrid
+    scraper_type: str = "api"
 
     def __init__(self):
         self.logger = logging.getLogger(f"scraper.{self.marketplace_slug}")
 
     @abstractmethod
     async def scrape(self) -> list[ScrapedItem]:
-        """Fetch and parse items from the marketplace. Must be implemented by each scraper."""
         pass
 
     async def save_results(self, db: AsyncSession, items: list[ScrapedItem], marketplace_id: int) -> int:
-        """Save scraped items to database."""
         saved = 0
         for scraped in items:
             try:
@@ -67,12 +62,10 @@ class BaseScraper(ABC):
         return saved
 
     async def run(self, marketplace_id: int) -> dict:
-        """Full scrape pipeline: scrape -> save -> report."""
-        job_id = uuid.uuid4()
+        job_id = str(uuid.uuid4())
         started_at = datetime.now(timezone.utc)
 
         async with async_session_maker() as db:
-            # Create job record
             job = ScrapeJob(
                 id=job_id,
                 marketplace_id=marketplace_id,
@@ -102,7 +95,7 @@ class BaseScraper(ABC):
             except Exception as e:
                 self.logger.error(f"Scrape failed for {self.marketplace_name}: {e}")
                 job.status = "failed"
-                job.errors = {"message": str(e)}
+                job.errors = str(e)
                 job.finished_at = datetime.now(timezone.utc)
                 await db.commit()
                 return {"status": "failed", "error": str(e)}

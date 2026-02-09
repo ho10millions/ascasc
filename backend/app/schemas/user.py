@@ -1,12 +1,11 @@
-import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 
 class UserRegister(BaseModel):
     username: str = Field(min_length=3, max_length=50)
-    email: EmailStr
+    email: str = Field(min_length=5, max_length=255)
     password: str = Field(min_length=6, max_length=100)
     invite_code: str = Field(min_length=1, max_length=30)
 
@@ -17,7 +16,7 @@ class UserLogin(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id: uuid.UUID
+    id: str
     username: str
     email: str
     is_admin: bool
@@ -44,7 +43,7 @@ class InviteCodeCreate(BaseModel):
 
 
 class InviteCodeResponse(BaseModel):
-    id: uuid.UUID
+    id: str
     code: str
     max_uses: int
     times_used: int
