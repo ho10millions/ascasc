@@ -1,7 +1,12 @@
-"""CS.Money scraper - uses API endpoints."""
+"""CS.Money scraper - uses API endpoints with optional cookie auth."""
 
+import logging
+
+from app.config import settings
 from app.scrapers.base import BaseScraper, ScrapedItem
 from app.scrapers.utils import fetch_json, classify_item_type
+
+logger = logging.getLogger(__name__)
 
 
 class CSMoneyScraper(BaseScraper):
@@ -16,6 +21,10 @@ class CSMoneyScraper(BaseScraper):
         offset = 0
         limit = 60
 
+        cookies = settings.CS_MONEY_COOKIES or None
+        if cookies:
+            logger.info("CS.Money: using cookie-based authentication")
+
         while offset < 5000:
             data = await fetch_json(
                 self.API_URL,
@@ -25,6 +34,7 @@ class CSMoneyScraper(BaseScraper):
                     "sort": "price",
                     "order": "asc",
                 },
+                cookies=cookies,
             )
             if not data:
                 break

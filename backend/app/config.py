@@ -17,5 +17,10 @@ class Settings:
     PROXY_URL = ""
     PROXY_ROTATION_ENABLED = False
 
+    # Cookie-based authentication for marketplaces
+    # Paste cookie string from browser DevTools (Network tab → Cookie header value)
+    CS_MONEY_COOKIES = os.environ.get("CS_MONEY_COOKIES", "")
+    BUFF163_COOKIES = os.environ.get("BUFF163_COOKIES", "")
+
 
 settings = Settings()

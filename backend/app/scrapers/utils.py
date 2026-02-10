@@ -28,10 +28,24 @@ def get_proxy() -> str | None:
     return None
 
 
+def parse_cookie_string(cookie_string: str) -> dict[str, str]:
+    """Parse a raw cookie header string into a dict."""
+    cookies = {}
+    if not cookie_string:
+        return cookies
+    for pair in cookie_string.split(";"):
+        pair = pair.strip()
+        if "=" in pair:
+            key, value = pair.split("=", 1)
+            cookies[key.strip()] = value.strip()
+    return cookies
+
+
 async def fetch_json(
     url: str,
     headers: dict | None = None,
     params: dict | None = None,
+    cookies: str | dict | None = None,
     max_retries: int = 3,
     delay: float = 1.0,
 ) -> Any:
@@ -44,11 +58,20 @@ async def fetch_json(
     if headers:
         default_headers.update(headers)
 
+    jar = None
+    if cookies:
+        cookie_dict = parse_cookie_string(cookies) if isinstance(cookies, str) else cookies
+        jar = aiohttp.CookieJar(unsafe=True)
+
     proxy = get_proxy()
 
     for attempt in range(max_retries):
         try:
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(cookie_jar=jar) as session:
+                if cookies:
+                    cookie_dict = parse_cookie_string(cookies) if isinstance(cookies, str) else cookies
+                    for name, value in cookie_dict.items():
+                        session.cookie_jar.update_cookies({name: value})
                 async with session.get(
                     url,
                     headers=default_headers,

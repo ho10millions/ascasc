@@ -1,7 +1,12 @@
-"""Buff163 (buff.163.com) scraper."""
+"""Buff163 (buff.163.com) scraper with optional cookie auth."""
 
+import logging
+
+from app.config import settings
 from app.scrapers.base import BaseScraper, ScrapedItem
 from app.scrapers.utils import fetch_json, classify_item_type
+
+logger = logging.getLogger(__name__)
 
 
 class Buff163Scraper(BaseScraper):
@@ -14,11 +19,17 @@ class Buff163Scraper(BaseScraper):
     async def scrape(self) -> list[ScrapedItem]:
         items = []
         page = 1
+
+        cookies = settings.BUFF163_COOKIES or None
+        if cookies:
+            logger.info("Buff163: using cookie-based authentication")
+
         while page <= 50:
             data = await fetch_json(
                 self.API_URL,
                 params={"game": "csgo", "page_num": page, "page_size": 80},
                 headers={"Referer": "https://buff.163.com/market/csgo"},
+                cookies=cookies,
             )
             if not data or data.get("code") != "OK":
                 break
