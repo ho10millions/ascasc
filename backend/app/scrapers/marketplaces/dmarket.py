@@ -1,4 +1,6 @@
-"""DMarket.com scraper - uses public API."""
+"""DMarket.com scraper - uses public API (no auth required)."""
+
+import asyncio
 
 from app.scrapers.base import BaseScraper, ScrapedItem
 from app.scrapers.utils import fetch_json, classify_item_type
@@ -14,17 +16,15 @@ class DMarketScraper(BaseScraper):
     async def scrape(self) -> list[ScrapedItem]:
         items = []
         cursor = ""
+        seen_names: set[str] = set()
 
         for _ in range(50):  # Max 50 pages
             params = {
                 "side": "market",
                 "orderBy": "price",
                 "orderDir": "asc",
-                "title": "",
-                "priceFrom": 0,
-                "priceTo": 0,
                 "gameId": "a8db",  # CS2 game ID on DMarket
-                "limit": 100,
+                "limit": "100",
                 "currency": "USD",
             }
             if cursor:
@@ -40,13 +40,21 @@ class DMarketScraper(BaseScraper):
 
             for obj in objects:
                 name = obj.get("title", "")
-                price_data = obj.get("price", {})
-                price = float(price_data.get("USD", 0)) / 100 if price_data.get("USD") else 0
-
-                if not name or price <= 0:
+                if not name or name in seen_names:
                     continue
 
-                extra = obj.get("extra", {})
+                price_data = obj.get("price", {})
+                # DMarket returns prices in cents as strings, e.g. {"USD": "245"}
+                raw_price = price_data.get("USD", "0")
+                try:
+                    price = float(raw_price) / 100
+                except (ValueError, TypeError):
+                    continue
+
+                if price <= 0:
+                    continue
+
+                seen_names.add(name)
                 items.append(ScrapedItem(
                     market_hash_name=name,
                     price_usd=round(price, 2),
@@ -58,5 +66,8 @@ class DMarketScraper(BaseScraper):
             cursor = data.get("cursor", "")
             if not cursor:
                 break
+
+            # Rate limit: small delay between pages
+            await asyncio.sleep(0.5)
 
         return items
