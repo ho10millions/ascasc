@@ -4,24 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scrooge's Price Aggregator</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0f0f23;--bg2:#1a1a2e;--bg3:#16213e;--accent:#e94560;--accent2:#0f3460;--green:#00d27a;--red:#e94560;--yellow:#f5a623;--text:#eee;--text2:#aab;--border:#2a2a4a}
+:root{--bg:#0f0f23;--bg2:#1a1a2e;--bg3:#16213e;--accent:#e94560;--accent2:#0f3460;--green:#00d27a;--red:#e94560;--yellow:#f5a623;--blue:#6ea8fe;--text:#eee;--text2:#aab;--border:#2a2a4a}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 a{color:var(--accent);text-decoration:none}
 button{cursor:pointer;border:none;font-family:inherit;font-size:14px}
 input,select{font-family:inherit;font-size:14px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 12px;outline:none}
 input:focus,select:focus{border-color:var(--accent)}
 .btn{padding:8px 20px;border-radius:6px;font-weight:600;transition:all .2s}
-.btn-primary{background:var(--accent);color:#fff}
-.btn-primary:hover{background:#d63050}
-.btn-secondary{background:var(--accent2);color:#fff}
-.btn-secondary:hover{background:#0a2540}
-.btn-success{background:var(--green);color:#000}
-.btn-success:hover{background:#00b868}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#d63050}
+.btn-secondary{background:var(--accent2);color:#fff}.btn-secondary:hover{background:#0a2540}
+.btn-success{background:var(--green);color:#000}.btn-success:hover{background:#00b868}
 .btn-sm{padding:5px 12px;font-size:12px}
-
-/* Layout */
 #app{display:flex;min-height:100vh}
 .sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);padding:20px 0;display:flex;flex-direction:column;position:fixed;height:100vh;z-index:10}
 .sidebar .logo{padding:0 20px 20px;border-bottom:1px solid var(--border);font-size:18px;font-weight:700;color:var(--accent)}
@@ -35,18 +31,12 @@ input:focus,select:focus{border-color:var(--accent)}
 .main{margin-left:220px;flex:1;padding:30px;min-height:100vh}
 .page-title{font-size:24px;font-weight:700;margin-bottom:20px}
 .page-title small{font-weight:400;color:var(--text2);font-size:14px;margin-left:10px}
-
-/* Cards */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:25px}
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px}
 .card .label{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
 .card .value{font-size:28px;font-weight:700}
-.card .value.green{color:var(--green)}
-.card .value.red{color:var(--red)}
-.card .value.yellow{color:var(--yellow)}
-
-/* Scraper status bar */
-.scraper-bar{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:15px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:15px}
+.card .value.green{color:var(--green)}.card .value.yellow{color:var(--yellow)}
+.scraper-bar{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:15px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
 .scraper-bar .status-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px}
 .scraper-bar .status-dot.running{background:var(--yellow);animation:pulse 1.5s infinite}
 .scraper-bar .status-dot.idle{background:var(--green)}
@@ -54,9 +44,7 @@ input:focus,select:focus{border-color:var(--accent)}
 .scraper-bar .info{flex:1;font-size:13px;color:var(--text2)}
 .scraper-bar .info strong{color:var(--text)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-
-/* Table */
-.table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow-x:auto}
 .table-wrap table{width:100%;border-collapse:collapse}
 .table-wrap th{background:var(--bg3);text-align:left;padding:12px 15px;font-size:12px;text-transform:uppercase;color:var(--text2);letter-spacing:.5px;white-space:nowrap}
 .table-wrap td{padding:10px 15px;border-top:1px solid var(--border);font-size:13px}
@@ -65,14 +53,10 @@ input:focus,select:focus{border-color:var(--accent)}
 .profit-badge.high{background:rgba(0,210,122,.15);color:var(--green)}
 .profit-badge.medium{background:rgba(245,166,35,.15);color:var(--yellow)}
 .profit-badge.low{background:rgba(233,69,96,.1);color:var(--red)}
-
-/* Filters */
 .filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;align-items:flex-end}
 .filters .field{display:flex;flex-direction:column;gap:4px}
 .filters .field label{font-size:11px;color:var(--text2);text-transform:uppercase}
-.filters input,.filters select{min-width:140px}
-
-/* Auth */
+.filters input,.filters select{min-width:130px}
 .auth-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
 .auth-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:40px;width:100%;max-width:400px}
 .auth-box h1{text-align:center;margin-bottom:5px;color:var(--accent)}
@@ -83,586 +67,267 @@ input:focus,select:focus{border-color:var(--accent)}
 .auth-box .btn{width:100%;padding:12px;font-size:15px}
 .auth-box .switch{text-align:center;margin-top:20px;font-size:13px;color:var(--text2)}
 .error-msg{background:rgba(233,69,96,.15);color:var(--red);padding:10px;border-radius:6px;margin-bottom:15px;font-size:13px;text-align:center}
-
-/* Pagination */
 .pagination{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:20px}
 .pagination button{padding:6px 14px;border-radius:6px;background:var(--bg3);color:var(--text);border:1px solid var(--border)}
 .pagination button:hover{background:var(--accent2)}
 .pagination button:disabled{opacity:.4;cursor:default}
 .pagination span{font-size:13px;color:var(--text2)}
-
-/* Loading */
 .loading{text-align:center;padding:40px;color:var(--text2)}
 .spinner{display:inline-block;width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-/* Marketplace chips */
 .mkt-link{display:inline-block;padding:2px 8px;background:var(--accent2);border-radius:4px;font-size:11px;color:var(--text)}
-
-/* Admin */
 .admin-badge{background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase}
 .invite-code{font-family:monospace;font-size:14px;background:var(--bg);padding:6px 12px;border-radius:6px;border:1px solid var(--border);user-select:all}
-.status-active{color:var(--green)}
-.status-inactive{color:var(--red)}
-
+.status-active{color:var(--green)}.status-inactive{color:var(--red)}
+.fee-info{font-size:10px;color:var(--text2);display:block}
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:25px;width:90%;max-width:700px;max-height:80vh;overflow-y:auto}
+.modal h2{margin-bottom:15px;font-size:18px}
+.modal .close-btn{float:right;background:none;color:var(--text2);font-size:20px;cursor:pointer;border:none;padding:0 5px}
+.fav-star{cursor:pointer;font-size:16px;color:var(--text2);transition:color .2s}
+.fav-star.active{color:var(--yellow)}.fav-star:hover{color:var(--yellow)}
+.ws-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:6px}
+.ws-dot.connected{background:var(--green)}.ws-dot.disconnected{background:var(--red)}
 @media(max-width:768px){
 .sidebar{width:60px}.sidebar .logo span,.sidebar nav a span,.sidebar .user-info{display:none}
 .sidebar .logo{font-size:14px;padding:0 10px 15px;text-align:center}
-.main{margin-left:60px;padding:15px}
-.filters{flex-direction:column}
-.cards{grid-template-columns:repeat(2,1fr)}
+.main{margin-left:60px;padding:15px}.filters{flex-direction:column}.cards{grid-template-columns:repeat(2,1fr)}
 }
 </style>
 </head>
 <body>
 <div id="app"></div>
-
 <script>
-// ============== State ==============
-const state = {
-  user: null,
-  token: null,
-  refreshToken: null,
-  page: 'dashboard',
-  arbitrageData: null,
-  statsData: null,
-  scraperStatus: null,
-  marketplaces: null,
-  itemsData: null,
-  adminUsers: null,
-  adminCodes: null,
-  filters: { min_profit_pct: 50, game: '', search: '', sort_by: 'profit_pct', sort_order: 'desc', page: 1, per_page: 50 },
-  itemFilters: { game: '', search: '', page: 1, per_page: 50 },
-  loading: false,
-  error: ''
-};
+const state={user:null,token:null,refreshToken:null,page:'dashboard',arbitrageData:null,statsData:null,scraperStatus:null,marketplaces:null,itemsData:null,adminUsers:null,adminCodes:null,favorites:new Set(),filters:{min_profit_pct:5,game:'',search:'',sort_by:'profit_pct',sort_order:'desc',page:1,per_page:50,marketplace_slug:''},itemFilters:{game:'',search:'',page:1,per_page:50},loading:false,error:'',wsConnected:false};
+let ws=null;
+const API='/api/v1';
 
-let scraperPollInterval = null;
-
-// ============== API ==============
-const API = '/api/v1';
-
-async function api(path, opts = {}) {
-  const headers = { 'Content-Type': 'application/json' };
-  if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
-  const res = await fetch(API + path, { ...opts, headers });
-  if (res.status === 401 && state.refreshToken) {
-    const ok = await tryRefresh();
-    if (ok) {
-      headers['Authorization'] = 'Bearer ' + state.token;
-      const res2 = await fetch(API + path, { ...opts, headers });
-      if (!res2.ok) throw new Error((await res2.json()).detail || 'Error');
-      return res2.json();
-    }
-    logout();
-    throw new Error('Session expired');
-  }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: 'Server error' }));
-    throw new Error(err.detail || 'Error');
-  }
+async function api(path,opts={}){
+  const headers={'Content-Type':'application/json'};
+  if(state.token)headers['Authorization']='Bearer '+state.token;
+  const res=await fetch(API+path,{...opts,headers});
+  if(res.status===401&&state.refreshToken){const ok=await tryRefresh();if(ok){headers['Authorization']='Bearer '+state.token;const r2=await fetch(API+path,{...opts,headers});if(!r2.ok)throw new Error((await r2.json()).detail||'Error');return r2.json();}logout();throw new Error('Session expired');}
+  if(!res.ok){const err=await res.json().catch(()=>({detail:'Server error'}));throw new Error(err.detail||'Error');}
   return res.json();
 }
+async function tryRefresh(){try{const r=await fetch(API+'/auth/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_token:state.refreshToken})});if(!r.ok)return false;const d=await r.json();state.token=d.access_token;state.refreshToken=d.refresh_token;state.user=d.user;saveSession();return true;}catch{return false;}}
+function saveSession(){localStorage.setItem('scrooge_session',JSON.stringify({token:state.token,refreshToken:state.refreshToken,user:state.user}))}
+function loadSession(){try{const s=JSON.parse(localStorage.getItem('scrooge_session'));if(s&&s.token){state.token=s.token;state.refreshToken=s.refreshToken;state.user=s.user;}}catch{}try{const f=JSON.parse(localStorage.getItem('scrooge_favorites'));if(f&&Array.isArray(f))state.favorites=new Set(f);}catch{}}
+function logout(){state.token=null;state.refreshToken=null;state.user=null;localStorage.removeItem('scrooge_session');state.page='login';if(ws){ws.close();ws=null;}render();}
 
-async function apiRaw(path) {
-  const res = await fetch(path);
-  return res.json();
+// WebSocket
+function connectWS(){
+  if(ws&&ws.readyState<=1)return;
+  const proto=location.protocol==='https:'?'wss:':'ws:';
+  ws=new WebSocket(proto+'//'+location.host+'/ws');
+  ws.onopen=()=>{state.wsConnected=true;updWS();};
+  ws.onmessage=(e)=>{try{const m=JSON.parse(e.data);if(m.type==='scraper_status'){state.scraperStatus={...state.scraperStatus,...m};updBar();}else if(m.type==='scraper_progress'){const el=document.getElementById('scraper-progress');if(el)el.textContent=m.marketplace+': +'+m.items_saved+' (total: '+m.total_so_far+')';}else if(m.type==='data_updated'){state.arbitrageData=null;state.statsData=null;loadPageData();}}catch{}};
+  ws.onclose=()=>{state.wsConnected=false;updWS();setTimeout(connectWS,3000);};
+  ws.onerror=()=>{ws.close();};
+}
+function updWS(){const d=document.getElementById('ws-indicator');if(d)d.className='ws-dot '+(state.wsConnected?'connected':'disconnected');}
+function updBar(){const b=document.getElementById('scraper-bar');if(b)b.innerHTML=scraperBarInner();}
+
+// Favorites
+function isFav(id){return state.favorites.has(id);}
+async function toggleFav(id){
+  if(!state.user)return;
+  if(isFav(id)){state.favorites.delete(id);fetch(API+'/favorites/'+id+'?user_id='+state.user.id,{method:'DELETE'}).catch(()=>{});}
+  else{state.favorites.add(id);fetch(API+'/favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:state.user.id,item_id:id})}).catch(()=>{});}
+  localStorage.setItem('scrooge_favorites',JSON.stringify([...state.favorites]));
+  document.querySelectorAll('[data-fav="'+id+'"]').forEach(el=>{el.className='fav-star'+(isFav(id)?' active':'');el.textContent=isFav(id)?'\u2605':'\u2606';});
 }
 
-async function tryRefresh() {
-  try {
-    const res = await fetch(API + '/auth/refresh', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: state.refreshToken })
-    });
-    if (!res.ok) return false;
-    const data = await res.json();
-    state.token = data.access_token;
-    state.refreshToken = data.refresh_token;
-    state.user = data.user;
-    saveSession();
-    return true;
-  } catch { return false; }
-}
+// Render
+function $(s,el){return(el||document).querySelector(s)}
+function $$(s,el){return[...(el||document).querySelectorAll(s)]}
+function render(){const app=$('#app');if(!state.user){app.innerHTML=state.page==='register'?renderReg():renderLogin();}else{app.innerHTML=renderLayout();connectWS();loadPageData();}bindEvents();}
 
-function saveSession() {
-  localStorage.setItem('scrooge_session', JSON.stringify({
-    token: state.token, refreshToken: state.refreshToken, user: state.user
-  }));
-}
+function renderLogin(){return`<div class="auth-page"><div class="auth-box"><h1>Scrooge's</h1><p>Price Aggregator & Arbitrage Hunter</p>${state.error?'<div class="error-msg">'+state.error+'</div>':''}<div class="field"><label>Username</label><input id="login-user" type="text" placeholder="username"></div><div class="field"><label>Password</label><input id="login-pass" type="password" placeholder="password"></div><button class="btn btn-primary" id="btn-login">Login</button><div class="switch">No account? <a href="#" id="go-register">Register</a></div></div></div>`;}
+function renderReg(){return`<div class="auth-page"><div class="auth-box"><h1>Register</h1><p>Need an invite code</p>${state.error?'<div class="error-msg">'+state.error+'</div>':''}<div class="field"><label>Username</label><input id="reg-user" type="text"></div><div class="field"><label>Email</label><input id="reg-email" type="email"></div><div class="field"><label>Password</label><input id="reg-pass" type="password"></div><div class="field"><label>Invite Code</label><input id="reg-code" type="text" placeholder="SCROOGE-ADMIN-2024"></div><button class="btn btn-primary" id="btn-register">Register</button><div class="switch">Have account? <a href="#" id="go-login">Login</a></div></div></div>`;}
 
-function loadSession() {
-  try {
-    const s = JSON.parse(localStorage.getItem('scrooge_session'));
-    if (s && s.token) { state.token = s.token; state.refreshToken = s.refreshToken; state.user = s.user; }
-  } catch {}
-}
-
-function logout() {
-  state.token = null; state.refreshToken = null; state.user = null;
-  localStorage.removeItem('scrooge_session');
-  state.page = 'login';
-  if (scraperPollInterval) { clearInterval(scraperPollInterval); scraperPollInterval = null; }
-  render();
-}
-
-// ============== Scraper Status Polling ==============
-function startScraperPolling() {
-  if (scraperPollInterval) return;
-  pollScraperStatus();
-  scraperPollInterval = setInterval(pollScraperStatus, 5000);
-}
-
-async function pollScraperStatus() {
-  try {
-    state.scraperStatus = await apiRaw('/api/v1/scraper-status');
-    const bar = document.getElementById('scraper-bar');
-    if (bar) bar.innerHTML = renderScraperBarInner();
-  } catch {}
-}
-
-// ============== Render Engine ==============
-function $(sel, el) { return (el || document).querySelector(sel); }
-function $$(sel, el) { return [...(el || document).querySelectorAll(sel)]; }
-
-function render() {
-  const app = $('#app');
-  if (!state.user) {
-    if (state.page === 'register') app.innerHTML = renderRegister();
-    else app.innerHTML = renderLogin();
-  } else {
-    app.innerHTML = renderLayout();
-    startScraperPolling();
-    loadPageData();
-  }
-  bindEvents();
-}
-
-function renderLogin() {
-  return `<div class="auth-page"><div class="auth-box">
-    <h1>Scrooge's</h1><p>Price Aggregator & Arbitrage Hunter</p>
-    ${state.error ? `<div class="error-msg">${state.error}</div>` : ''}
-    <div class="field"><label>Username</label><input id="login-user" type="text" placeholder="username"></div>
-    <div class="field"><label>Password</label><input id="login-pass" type="password" placeholder="password"></div>
-    <button class="btn btn-primary" id="btn-login">Login</button>
-    <div class="switch">No account? <a href="#" id="go-register">Register</a></div>
-  </div></div>`;
-}
-
-function renderRegister() {
-  return `<div class="auth-page"><div class="auth-box">
-    <h1>Register</h1><p>Need an invite code to join</p>
-    ${state.error ? `<div class="error-msg">${state.error}</div>` : ''}
-    <div class="field"><label>Username</label><input id="reg-user" type="text" placeholder="min 3 chars"></div>
-    <div class="field"><label>Email</label><input id="reg-email" type="email" placeholder="you@mail.com"></div>
-    <div class="field"><label>Password</label><input id="reg-pass" type="password" placeholder="min 6 chars"></div>
-    <div class="field"><label>Invite Code</label><input id="reg-code" type="text" placeholder="SCROOGE-ADMIN-2024"></div>
-    <button class="btn btn-primary" id="btn-register">Register</button>
-    <div class="switch">Have account? <a href="#" id="go-login">Login</a></div>
-  </div></div>`;
-}
-
-function renderLayout() {
-  const isAdmin = state.user && state.user.is_admin;
-  return `
-  <div class="sidebar">
-    <div class="logo">Scrooge's<span>Price Aggregator</span></div>
-    <nav>
-      <a href="#" data-page="dashboard" class="${state.page==='dashboard'?'active':''}"><span>Dashboard</span></a>
-      <a href="#" data-page="arbitrage" class="${state.page==='arbitrage'?'active':''}"><span>Arbitrage</span></a>
-      <a href="#" data-page="items" class="${state.page==='items'?'active':''}"><span>Items</span></a>
-      <a href="#" data-page="marketplaces" class="${state.page==='marketplaces'?'active':''}"><span>Marketplaces</span></a>
-      ${isAdmin ? `<a href="#" data-page="admin" class="${state.page==='admin'?'active':''}"><span>Admin</span></a>` : ''}
-    </nav>
-    <div class="user-info">
-      <strong>${state.user.username} ${isAdmin?'<span class="admin-badge">Admin</span>':''}</strong>
-      <a href="#" id="btn-logout">Logout</a>
-    </div>
-  </div>
+function renderLayout(){
+  const isA=state.user&&state.user.is_admin;
+  return`<div class="sidebar"><div class="logo">Scrooge's<span>Price Aggregator <span id="ws-indicator" class="ws-dot ${state.wsConnected?'connected':'disconnected'}"></span></span></div><nav>
+  <a href="#" data-page="dashboard" class="${state.page==='dashboard'?'active':''}"><span>Dashboard</span></a>
+  <a href="#" data-page="arbitrage" class="${state.page==='arbitrage'?'active':''}"><span>Arbitrage</span></a>
+  <a href="#" data-page="items" class="${state.page==='items'?'active':''}"><span>Items</span></a>
+  <a href="#" data-page="favorites" class="${state.page==='favorites'?'active':''}"><span>Favorites</span></a>
+  <a href="#" data-page="marketplaces" class="${state.page==='marketplaces'?'active':''}"><span>Marketplaces</span></a>
+  ${isA?'<a href="#" data-page="admin" class="'+(state.page==='admin'?'active':'')+'"><span>Admin</span></a>':''}
+  </nav><div class="user-info"><strong>${state.user.username} ${isA?'<span class="admin-badge">Admin</span>':''}</strong><a href="#" id="btn-logout">Logout</a></div></div>
   <div class="main">${renderPage()}</div>`;
 }
 
-function renderPage() {
-  switch (state.page) {
-    case 'dashboard': return renderDashboard();
-    case 'arbitrage': return renderArbitrage();
-    case 'items': return renderItems();
-    case 'marketplaces': return renderMarketplaces();
-    case 'admin': return renderAdmin();
-    default: return renderDashboard();
+function renderPage(){switch(state.page){case'dashboard':return renderDash();case'arbitrage':return renderArb();case'items':return renderItems();case'favorites':return renderFavPage();case'marketplaces':return renderMkts();case'admin':return renderAdmin();default:return renderDash();}}
+
+function scraperBar(){return'<div class="scraper-bar" id="scraper-bar">'+scraperBarInner()+'</div>';}
+function scraperBarInner(){
+  const ss=state.scraperStatus;
+  if(!ss)return'<div class="info"><span class="status-dot idle"></span> <strong>Scraper:</strong> Loading...</div>';
+  const run=ss.running,dot=run?'running':(ss.last_result==='success'?'idle':(ss.last_result?'error':'idle'));
+  const txt=run?'Scraping...':ss.last_result==='success'?'Idle':(ss.last_result||'Waiting...');
+  const lr=ss.last_run?new Date(ss.last_run).toLocaleString():'Never';
+  const isA=state.user&&state.user.is_admin;
+  return`<div class="info"><span class="status-dot ${dot}"></span><strong>Scraper:</strong> ${txt} &middot; Last: ${lr} ${ss.items_total?' &middot; '+ss.items_total+' items':''}</div><span style="font-size:11px;color:var(--yellow)" id="scraper-progress"></span>${isA&&!run?'<button class="btn btn-success btn-sm" id="btn-scrape-now">Scrape Now</button>':''}${run?'<span style="color:var(--yellow);font-size:12px"><div class="spinner" style="width:16px;height:16px;border-width:2px;vertical-align:middle;display:inline-block"></div> Working...</span>':''}`;
+}
+
+function renderDash(){
+  const s=state.statsData;
+  if(!s)return'<div class="loading"><div class="spinner"></div><p>Loading...</p></div>';
+  return`<h1 class="page-title">Dashboard</h1>${scraperBar()}<div class="cards">
+  <div class="card"><div class="label">Active Opportunities</div><div class="value green">${s.active_opportunities}</div></div>
+  <div class="card"><div class="label">High Value (50%+)</div><div class="value yellow">${s.high_value_opportunities}</div></div>
+  <div class="card"><div class="label">Avg Profit %</div><div class="value">${s.avg_profit_pct}%</div></div>
+  <div class="card"><div class="label">Max Profit %</div><div class="value green">${s.max_profit_pct}%</div></div>
+  <div class="card"><div class="label">Items Tracked</div><div class="value">${s.total_items_tracked}</div></div>
+  </div><h2 style="margin-bottom:15px">Top Opportunities</h2>${arbTable(state.arbitrageData,false)}`;
+}
+
+function renderArb(){
+  const f=state.filters;
+  const mo=(state.marketplaces||[]).filter(m=>m.is_enabled&&m.slug!=='steam').map(m=>`<option value="${m.slug}" ${f.marketplace_slug===m.slug?'selected':''}>${esc(m.name)}</option>`).join('');
+  return`<h1 class="page-title">Arbitrage Hunter<small>Buy cheap, sell on Steam</small></h1>${scraperBar()}
+  <div class="filters">
+  <div class="field"><label>Min Profit %</label><input type="number" id="f-min-profit" value="${f.min_profit_pct}" min="0" step="1"></div>
+  <div class="field"><label>Game</label><select id="f-game"><option value="">All</option><option value="cs2" ${f.game==='cs2'?'selected':''}>CS2</option><option value="dota2" ${f.game==='dota2'?'selected':''}>Dota 2</option><option value="tf2" ${f.game==='tf2'?'selected':''}>TF2</option><option value="rust" ${f.game==='rust'?'selected':''}>Rust</option></select></div>
+  <div class="field"><label>Marketplace</label><select id="f-marketplace"><option value="">All</option>${mo}</select></div>
+  <div class="field"><label>Search</label><input type="text" id="f-search" value="${f.search}" placeholder="Item name..."></div>
+  <div class="field"><label>Sort</label><select id="f-sort"><option value="profit_pct" ${f.sort_by==='profit_pct'?'selected':''}>Profit %</option><option value="profit_usd" ${f.sort_by==='profit_usd'?'selected':''}>Profit $</option><option value="buy_price" ${f.sort_by==='buy_price'?'selected':''}>Price</option><option value="name" ${f.sort_by==='name'?'selected':''}>Name</option></select></div>
+  <div class="field"><label>&nbsp;</label><button class="btn btn-primary btn-sm" id="btn-apply-filters">Apply</button></div>
+  </div>${state.loading?'<div class="loading"><div class="spinner"></div></div>':arbTable(state.arbitrageData,true)}`;
+}
+
+function arbTable(data,showPg){
+  if(!data||!data.items||data.items.length===0)return'<div class="table-wrap" style="padding:30px;text-align:center;color:var(--text2)">No opportunities found yet. Scraper will collect data automatically.</div>';
+  let h=`<div class="table-wrap"><table><thead><tr><th></th><th>Item</th><th>Game</th><th>Buy From</th><th>Buy $</th><th>Steam $</th><th>Fees</th><th>Profit $</th><th>Profit %</th></tr></thead><tbody>`;
+  for(const o of data.items){
+    const cls=o.profit_pct>=100?'high':o.profit_pct>=50?'medium':'low';
+    const sl=o.steam_url||'#';
+    const bf=o.buy_marketplace_fee_pct||5;
+    h+=`<tr>
+    <td><span class="fav-star${isFav(o.item_id)?' active':''}" data-fav="${o.item_id}" onclick="toggleFav('${o.item_id}')">${isFav(o.item_id)?'\u2605':'\u2606'}</span></td>
+    <td title="${esc(o.market_hash_name)}"><a href="${esc(sl)}" target="_blank" style="color:var(--text);text-decoration:none;border-bottom:1px dashed var(--text2)">${esc(o.market_hash_name.length>35?o.market_hash_name.slice(0,32)+'...':o.market_hash_name)}</a> <span style="cursor:pointer;font-size:11px;color:var(--accent)" onclick="showChart('${o.item_id}','${esc(o.market_hash_name)}')">[chart]</span></td>
+    <td>${o.game.toUpperCase()}</td>
+    <td><a href="${esc(o.buy_marketplace_url)}" target="_blank" class="mkt-link">${esc(o.buy_marketplace_name)}</a></td>
+    <td>$${o.buy_price_usd.toFixed(2)}</td>
+    <td><a href="${esc(sl)}" target="_blank" class="mkt-link" style="color:var(--blue)">$${o.steam_price_usd.toFixed(2)}</a></td>
+    <td><span class="fee-info">Buy:${bf}% Stm:13%</span></td>
+    <td style="color:var(--green)">+$${o.profit_usd.toFixed(2)}</td>
+    <td><span class="profit-badge ${cls}">+${o.profit_pct.toFixed(1)}%</span></td></tr>`;
   }
+  h+='</tbody></table></div>';
+  if(showPg&&data.total_pages>1)h+=`<div class="pagination"><button id="pg-prev" ${data.page<=1?'disabled':''}>Prev</button><span>Page ${data.page} of ${data.total_pages} (${data.total} total)</span><button id="pg-next" ${data.page>=data.total_pages?'disabled':''}>Next</button></div>`;
+  return h;
 }
 
-// ============== Scraper Status Bar ==============
-function renderScraperBar() {
-  return `<div class="scraper-bar" id="scraper-bar">${renderScraperBarInner()}</div>`;
+// Price Chart
+async function showChart(id,name){
+  const ov=document.createElement('div');ov.className='modal-overlay';
+  ov.innerHTML=`<div class="modal"><button class="close-btn" onclick="this.closest('.modal-overlay').remove()">&times;</button><h2>Price History: ${name}</h2><canvas id="price-chart" height="300"></canvas><div class="loading" id="chart-loading"><div class="spinner"></div></div></div>`;
+  document.body.appendChild(ov);ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  try{
+    const res=await fetch('/api/v1/items/'+id+'/price-history?days=30');const data=await res.json();
+    const cl=document.getElementById('chart-loading');if(cl)cl.remove();
+    if(!data.history||data.history.length===0){document.getElementById('price-chart').insertAdjacentHTML('afterend','<p style="text-align:center;color:var(--text2);margin-top:10px">No price history yet</p>');return;}
+    const byM={};for(const h of data.history){if(!byM[h.marketplace])byM[h.marketplace]=[];byM[h.marketplace].push({x:new Date(h.scraped_at),y:h.price_usd});}
+    const cols=['#e94560','#00d27a','#6ea8fe','#f5a623','#9b59b6','#1abc9c','#e67e22','#3498db'];
+    const ds=Object.entries(byM).map(([n,pts],i)=>({label:n,data:pts,borderColor:cols[i%cols.length],backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:.3}));
+    new Chart(document.getElementById('price-chart'),{type:'line',data:{datasets:ds},options:{responsive:true,scales:{x:{type:'timeseries',time:{unit:'day'},ticks:{color:'#aab'},grid:{color:'#2a2a4a'}},y:{ticks:{color:'#aab',callback:v=>'$'+v.toFixed(2)},grid:{color:'#2a2a4a'}}},plugins:{legend:{labels:{color:'#eee'}}}}});
+  }catch{const cl=document.getElementById('chart-loading');if(cl)cl.innerHTML='<p style="color:var(--red)">Failed to load</p>';}
 }
 
-function renderScraperBarInner() {
-  const ss = state.scraperStatus;
-  if (!ss) return `<div class="info"><span class="status-dot idle"></span> <strong>Scraper:</strong> Loading status...</div>`;
-
-  const isRunning = ss.running;
-  const dotClass = isRunning ? 'running' : (ss.last_result === 'success' ? 'idle' : (ss.last_result ? 'error' : 'idle'));
-  const statusText = isRunning ? 'Scraping in progress...' : (ss.last_result === 'success' ? 'Idle' : (ss.last_result || 'Waiting for first run...'));
-  const lastRun = ss.last_run ? new Date(ss.last_run).toLocaleString() : 'Never';
-  const isAdmin = state.user && state.user.is_admin;
-
-  return `
-    <div class="info">
-      <span class="status-dot ${dotClass}"></span>
-      <strong>Scraper:</strong> ${statusText}
-      &nbsp;&middot;&nbsp; Last run: ${lastRun}
-    </div>
-    ${isAdmin && !isRunning ? '<button class="btn btn-success btn-sm" id="btn-scrape-now">Start Scraping Now</button>' : ''}
-    ${isRunning ? '<span style="color:var(--yellow);font-size:12px"><div class="spinner" style="width:16px;height:16px;border-width:2px;vertical-align:middle;display:inline-block"></div> Working...</span>' : ''}`;
+function renderItems(){
+  const f=state.itemFilters;
+  return`<h1 class="page-title">Tracked Items</h1><div class="filters">
+  <div class="field"><label>Game</label><select id="if-game"><option value="">All</option><option value="cs2" ${f.game==='cs2'?'selected':''}>CS2</option><option value="dota2" ${f.game==='dota2'?'selected':''}>Dota 2</option><option value="tf2" ${f.game==='tf2'?'selected':''}>TF2</option><option value="rust" ${f.game==='rust'?'selected':''}>Rust</option></select></div>
+  <div class="field"><label>Search</label><input type="text" id="if-search" value="${f.search}" placeholder="Item name..."></div>
+  <div class="field"><label>&nbsp;</label><button class="btn btn-primary btn-sm" id="btn-apply-item-filters">Search</button></div>
+  </div>${state.loading?'<div class="loading"><div class="spinner"></div></div>':itemsTable()}`;
 }
 
-// ============== Dashboard ==============
-function renderDashboard() {
-  const s = state.statsData;
-  if (!s) return '<div class="loading"><div class="spinner"></div><p>Loading...</p></div>';
-  return `
-    <h1 class="page-title">Dashboard</h1>
-    ${renderScraperBar()}
-    <div class="cards">
-      <div class="card"><div class="label">Active Opportunities</div><div class="value green">${s.active_opportunities}</div></div>
-      <div class="card"><div class="label">High Value (50%+)</div><div class="value yellow">${s.high_value_opportunities}</div></div>
-      <div class="card"><div class="label">Avg Profit %</div><div class="value">${s.avg_profit_pct}%</div></div>
-      <div class="card"><div class="label">Max Profit %</div><div class="value green">${s.max_profit_pct}%</div></div>
-      <div class="card"><div class="label">Items Tracked</div><div class="value">${s.total_items_tracked}</div></div>
-    </div>
-    <h2 style="margin-bottom:15px">Top Arbitrage Opportunities</h2>
-    ${renderArbitrageTable(state.arbitrageData, false)}`;
+function itemsTable(){
+  const d=state.itemsData;if(!d||!d.items||d.items.length===0)return'<div class="table-wrap" style="padding:30px;text-align:center;color:var(--text2)">No items found.</div>';
+  let h=`<div class="table-wrap"><table><thead><tr><th></th><th>Name</th><th>Game</th><th>Type</th><th>Chart</th><th>Added</th></tr></thead><tbody>`;
+  for(const i of d.items){h+=`<tr><td><span class="fav-star${isFav(i.id)?' active':''}" data-fav="${i.id}" onclick="toggleFav('${i.id}')">${isFav(i.id)?'\u2605':'\u2606'}</span></td><td>${esc(i.market_hash_name)}</td><td>${(i.game||'').toUpperCase()}</td><td>${esc(i.item_type||'-')}</td><td><span style="cursor:pointer;color:var(--accent);font-size:12px" onclick="showChart('${i.id}','${esc(i.market_hash_name)}')">[chart]</span></td><td>${new Date(i.created_at).toLocaleDateString()}</td></tr>`;}
+  h+='</tbody></table></div>';
+  if(d.total_pages>1)h+=`<div class="pagination"><button id="ipg-prev" ${d.page<=1?'disabled':''}>Prev</button><span>Page ${d.page} of ${d.total_pages} (${d.total} total)</span><button id="ipg-next" ${d.page>=d.total_pages?'disabled':''}>Next</button></div>`;
+  return h;
 }
 
-// ============== Arbitrage ==============
-function renderArbitrage() {
-  const f = state.filters;
-  return `
-    <h1 class="page-title">Arbitrage Hunter<small>Buy cheap, sell on Steam</small></h1>
-    ${renderScraperBar()}
-    <div class="filters">
-      <div class="field"><label>Min Profit %</label><input type="number" id="f-min-profit" value="${f.min_profit_pct}" min="0"></div>
-      <div class="field"><label>Game</label><select id="f-game"><option value="">All</option><option value="cs2" ${f.game==='cs2'?'selected':''}>CS2</option><option value="dota2" ${f.game==='dota2'?'selected':''}>Dota 2</option></select></div>
-      <div class="field"><label>Search</label><input type="text" id="f-search" value="${f.search}" placeholder="Item name..."></div>
-      <div class="field"><label>Sort</label><select id="f-sort"><option value="profit_pct" ${f.sort_by==='profit_pct'?'selected':''}>Profit %</option><option value="profit_usd" ${f.sort_by==='profit_usd'?'selected':''}>Profit $</option><option value="buy_price" ${f.sort_by==='buy_price'?'selected':''}>Price</option><option value="name" ${f.sort_by==='name'?'selected':''}>Name</option></select></div>
-      <div class="field"><label>&nbsp;</label><button class="btn btn-primary btn-sm" id="btn-apply-filters">Apply</button></div>
-    </div>
-    ${state.loading ? '<div class="loading"><div class="spinner"></div></div>' : renderArbitrageTable(state.arbitrageData, true)}`;
+function renderFavPage(){return`<h1 class="page-title">Favorites<small>${state.favorites.size} items</small></h1><div id="fav-content"><div class="loading"><div class="spinner"></div></div></div>`;}
+async function loadFavs(){
+  if(!state.user)return;
+  try{const data=await fetch(API+'/favorites?user_id='+state.user.id).then(r=>r.json());const favs=data.favorites||[];const el=document.getElementById('fav-content');if(!el)return;
+  if(favs.length===0){el.innerHTML='<div class="table-wrap" style="padding:30px;text-align:center;color:var(--text2)">No favorites yet. Star items to track them.</div>';return;}
+  let h=`<div class="table-wrap"><table><thead><tr><th></th><th>Name</th><th>Game</th><th>Type</th><th>Chart</th><th>Added</th></tr></thead><tbody>`;
+  for(const f of favs){h+=`<tr><td><span class="fav-star active" data-fav="${f.item_id}" onclick="toggleFav('${f.item_id}');setTimeout(loadFavs,500)">\u2605</span></td><td>${esc(f.market_hash_name)}</td><td>${(f.game||'').toUpperCase()}</td><td>${esc(f.item_type||'-')}</td><td><span style="cursor:pointer;color:var(--accent);font-size:12px" onclick="showChart('${f.item_id}','${esc(f.market_hash_name)}')">[chart]</span></td><td>${f.added_at?new Date(f.added_at).toLocaleDateString():'-'}</td></tr>`;}
+  h+='</tbody></table></div>';el.innerHTML=h;}catch{const el=document.getElementById('fav-content');if(el)el.innerHTML='<p style="color:var(--red)">Failed to load</p>';}
 }
 
-function renderArbitrageTable(data, showPagination) {
-  if (!data || !data.items || data.items.length === 0) return '<div class="table-wrap" style="padding:30px;text-align:center;color:var(--text2)">No opportunities found yet. Scraper will collect data automatically (check status above).</div>';
-  let html = `<div class="table-wrap"><table>
-    <thead><tr><th>Item</th><th>Game</th><th>Buy From</th><th>Buy Price</th><th>Steam</th><th>After Fee</th><th>Profit $</th><th>Profit %</th></tr></thead><tbody>`;
-  for (const o of data.items) {
-    const cls = o.profit_pct >= 100 ? 'high' : o.profit_pct >= 50 ? 'medium' : 'low';
-    const steamLink = o.steam_url || '#';
-    html += `<tr>
-      <td title="${esc(o.market_hash_name)}"><a href="${esc(steamLink)}" target="_blank" style="color:var(--text1);text-decoration:none;border-bottom:1px dashed var(--text2)">${esc(o.market_hash_name.length > 40 ? o.market_hash_name.slice(0,37)+'...' : o.market_hash_name)}</a></td>
-      <td>${o.game.toUpperCase()}</td>
-      <td><a href="${esc(o.buy_marketplace_url)}" target="_blank" class="mkt-link">${esc(o.buy_marketplace_name)}</a></td>
-      <td>$${o.buy_price_usd.toFixed(2)}</td>
-      <td><a href="${esc(steamLink)}" target="_blank" class="mkt-link" style="color:var(--blue,#6ea8fe)">$${o.steam_price_usd.toFixed(2)}</a></td>
-      <td>$${o.steam_price_after_fee.toFixed(2)}</td>
-      <td style="color:var(--green)">+$${o.profit_usd.toFixed(2)}</td>
-      <td><span class="profit-badge ${cls}">+${o.profit_pct.toFixed(1)}%</span></td>
-    </tr>`;
-  }
-  html += '</tbody></table></div>';
-  if (showPagination && data.total_pages > 1) {
-    html += `<div class="pagination">
-      <button id="pg-prev" ${data.page<=1?'disabled':''}>Prev</button>
-      <span>Page ${data.page} of ${data.total_pages} (${data.total} total)</span>
-      <button id="pg-next" ${data.page>=data.total_pages?'disabled':''}>Next</button>
-    </div>`;
-  }
-  return html;
+function renderMkts(){
+  if(!state.marketplaces)return'<div class="loading"><div class="spinner"></div></div>';
+  const active=state.marketplaces.filter(m=>m.is_enabled).length;
+  let h=`<h1 class="page-title">Marketplaces<small>${active} active / ${state.marketplaces.length} total</small></h1><div class="table-wrap"><table><thead><tr><th>Name</th><th>Status</th><th>Last Scraped</th><th>URL</th></tr></thead><tbody>`;
+  for(const m of state.marketplaces){h+=`<tr><td><strong>${esc(m.name)}</strong></td><td>${m.is_enabled?'<span class="status-active">Active</span>':'<span class="status-inactive">Off</span>'}</td><td>${m.last_scraped_at?new Date(m.last_scraped_at).toLocaleString():'Never'}</td><td><a href="${esc(m.base_url)}" target="_blank" class="mkt-link">${esc(m.slug)}</a></td></tr>`;}
+  h+='</tbody></table></div>';return h;
 }
 
-// ============== Items ==============
-function renderItems() {
-  const f = state.itemFilters;
-  return `
-    <h1 class="page-title">Tracked Items</h1>
-    <div class="filters">
-      <div class="field"><label>Game</label><select id="if-game"><option value="">All</option><option value="cs2" ${f.game==='cs2'?'selected':''}>CS2</option><option value="dota2" ${f.game==='dota2'?'selected':''}>Dota 2</option></select></div>
-      <div class="field"><label>Search</label><input type="text" id="if-search" value="${f.search}" placeholder="Item name..."></div>
-      <div class="field"><label>&nbsp;</label><button class="btn btn-primary btn-sm" id="btn-apply-item-filters">Search</button></div>
-    </div>
-    ${state.loading ? '<div class="loading"><div class="spinner"></div></div>' : renderItemsTable()}`;
+function renderAdmin(){
+  if(!state.user||!state.user.is_admin)return'<p>Access denied</p>';
+  return`<h1 class="page-title">Admin Panel</h1>${scraperBar()}<div style="display:flex;gap:10px;margin-bottom:20px"><button class="btn btn-secondary btn-sm" id="at-users">Users</button><button class="btn btn-secondary btn-sm" id="at-codes">Invite Codes</button><button class="btn btn-primary btn-sm" id="btn-gen-code">+ New Code</button></div><div id="admin-content">${adminUsers()}</div>`;
 }
+function adminUsers(){if(!state.adminUsers)return'<div class="loading"><div class="spinner"></div></div>';let h=`<div class="table-wrap"><table><thead><tr><th>Username</th><th>Email</th><th>Admin</th><th>Status</th><th>Joined</th></tr></thead><tbody>`;for(const u of state.adminUsers){h+=`<tr><td><strong>${esc(u.username)}</strong></td><td>${esc(u.email)}</td><td>${u.is_admin?'<span class="admin-badge">Admin</span>':'-'}</td><td>${u.is_active?'<span class="status-active">Active</span>':'<span class="status-inactive">Blocked</span>'}</td><td>${new Date(u.created_at).toLocaleDateString()}</td></tr>`;}h+='</tbody></table></div>';return h;}
+function adminCodes(){if(!state.adminCodes)return'<div class="loading"><div class="spinner"></div></div>';let h=`<div class="table-wrap"><table><thead><tr><th>Code</th><th>Uses</th><th>Admin</th><th>Status</th></tr></thead><tbody>`;for(const c of state.adminCodes){h+=`<tr><td><span class="invite-code">${esc(c.code)}</span></td><td>${c.times_used}/${c.max_uses}</td><td>${c.grants_admin?'Yes':'No'}</td><td>${c.is_active?'<span class="status-active">Active</span>':'<span class="status-inactive">Used</span>'}</td></tr>`;}h+='</tbody></table></div>';return h;}
 
-function renderItemsTable() {
-  const d = state.itemsData;
-  if (!d || !d.items || d.items.length === 0) return '<div class="table-wrap" style="padding:30px;text-align:center;color:var(--text2)">No items found. Wait for scraper to collect data.</div>';
-  let html = `<div class="table-wrap"><table>
-    <thead><tr><th>Name</th><th>Game</th><th>Type</th><th>Rarity</th><th>Added</th></tr></thead><tbody>`;
-  for (const i of d.items) {
-    html += `<tr>
-      <td>${esc(i.market_hash_name)}</td>
-      <td>${(i.game||'').toUpperCase()}</td>
-      <td>${esc(i.item_type||'-')}</td>
-      <td>${esc(i.rarity||'-')}</td>
-      <td>${new Date(i.created_at).toLocaleDateString()}</td>
-    </tr>`;
-  }
-  html += '</tbody></table></div>';
-  if (d.total_pages > 1) {
-    html += `<div class="pagination">
-      <button id="ipg-prev" ${d.page<=1?'disabled':''}>Prev</button>
-      <span>Page ${d.page} of ${d.total_pages} (${d.total} total)</span>
-      <button id="ipg-next" ${d.page>=d.total_pages?'disabled':''}>Next</button>
-    </div>`;
-  }
-  return html;
-}
-
-// ============== Marketplaces ==============
-function renderMarketplaces() {
-  if (!state.marketplaces) return '<div class="loading"><div class="spinner"></div><p>Loading...</p></div>';
-  let html = `<h1 class="page-title">Marketplaces<small>${state.marketplaces.length} connected</small></h1>
-    <div class="table-wrap"><table>
-    <thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Interval</th><th>Last Scraped</th><th>URL</th></tr></thead><tbody>`;
-  for (const m of state.marketplaces) {
-    html += `<tr>
-      <td><strong>${esc(m.name)}</strong></td>
-      <td>${m.scraper_type}</td>
-      <td>${m.is_enabled ? '<span class="status-active">Active</span>' : '<span class="status-inactive">Disabled</span>'}</td>
-      <td>${m.scrape_interval_minutes} min</td>
-      <td>${m.last_scraped_at ? new Date(m.last_scraped_at).toLocaleString() : 'Never'}</td>
-      <td><a href="${esc(m.base_url)}" target="_blank" class="mkt-link">${esc(m.slug)}</a></td>
-    </tr>`;
-  }
-  html += '</tbody></table></div>';
-  return html;
-}
-
-// ============== Admin ==============
-function renderAdmin() {
-  if (!state.user || !state.user.is_admin) return '<p>Access denied</p>';
-  return `
-    <h1 class="page-title">Admin Panel</h1>
-    ${renderScraperBar()}
-    <div style="display:flex;gap:10px;margin-bottom:20px">
-      <button class="btn btn-secondary btn-sm" data-admin-tab="users" id="at-users">Users</button>
-      <button class="btn btn-secondary btn-sm" data-admin-tab="codes" id="at-codes">Invite Codes</button>
-      <button class="btn btn-primary btn-sm" id="btn-gen-code">+ New Invite Code</button>
-    </div>
-    <div id="admin-content">${renderAdminUsers()}</div>`;
-}
-
-function renderAdminUsers() {
-  if (!state.adminUsers) return '<div class="loading"><div class="spinner"></div></div>';
-  let html = `<div class="table-wrap"><table>
-    <thead><tr><th>Username</th><th>Email</th><th>Admin</th><th>Status</th><th>Joined</th></tr></thead><tbody>`;
-  for (const u of state.adminUsers) {
-    html += `<tr>
-      <td><strong>${esc(u.username)}</strong></td>
-      <td>${esc(u.email)}</td>
-      <td>${u.is_admin ? '<span class="admin-badge">Admin</span>' : '-'}</td>
-      <td>${u.is_active ? '<span class="status-active">Active</span>' : '<span class="status-inactive">Blocked</span>'}</td>
-      <td>${new Date(u.created_at).toLocaleDateString()}</td>
-    </tr>`;
-  }
-  html += '</tbody></table></div>';
-  return html;
-}
-
-function renderAdminCodes() {
-  if (!state.adminCodes) return '<div class="loading"><div class="spinner"></div></div>';
-  let html = `<div class="table-wrap"><table>
-    <thead><tr><th>Code</th><th>Uses</th><th>Admin</th><th>Status</th><th>Created</th></tr></thead><tbody>`;
-  for (const c of state.adminCodes) {
-    html += `<tr>
-      <td><span class="invite-code">${esc(c.code)}</span></td>
-      <td>${c.times_used} / ${c.max_uses}</td>
-      <td>${c.grants_admin ? 'Yes' : 'No'}</td>
-      <td>${c.is_active ? '<span class="status-active">Active</span>' : '<span class="status-inactive">Used</span>'}</td>
-      <td>${new Date(c.created_at).toLocaleDateString()}</td>
-    </tr>`;
-  }
-  html += '</tbody></table></div>';
-  return html;
-}
-
-// ============== Data Loading ==============
-async function loadPageData() {
-  try {
-    switch (state.page) {
-      case 'dashboard':
-        if (!state.statsData) state.statsData = await api('/arbitrage/stats');
-        if (!state.arbitrageData) {
-          state.arbitrageData = await api('/arbitrage?min_profit_pct=50&sort_by=profit_pct&sort_order=desc&per_page=10');
-        }
-        renderPageContent();
-        break;
-      case 'arbitrage':
-        state.loading = true; renderPageContent();
-        const f = state.filters;
-        const params = new URLSearchParams({
-          min_profit_pct: f.min_profit_pct, sort_by: f.sort_by, sort_order: f.sort_order,
-          page: f.page, per_page: f.per_page
-        });
-        if (f.game) params.set('game', f.game);
-        if (f.search) params.set('search', f.search);
-        state.arbitrageData = await api('/arbitrage?' + params);
-        state.loading = false; renderPageContent();
-        break;
-      case 'items':
-        state.loading = true; renderPageContent();
-        const ip = state.itemFilters;
-        const iparams = new URLSearchParams({ page: ip.page, per_page: ip.per_page });
-        if (ip.game) iparams.set('game', ip.game);
-        if (ip.search) iparams.set('search', ip.search);
-        state.itemsData = await api('/items?' + iparams);
-        state.loading = false; renderPageContent();
-        break;
-      case 'marketplaces':
-        if (!state.marketplaces) state.marketplaces = await api('/marketplaces');
-        renderPageContent();
-        break;
-      case 'admin':
-        if (!state.adminUsers) state.adminUsers = await api('/admin/users');
-        if (!state.adminCodes) state.adminCodes = await api('/admin/invite-codes');
-        renderPageContent();
-        break;
+// Data Loading
+async function loadPageData(){
+  try{
+    if(!state.marketplaces)state.marketplaces=await api('/marketplaces');
+    if(!state.scraperStatus)try{state.scraperStatus=await fetch('/api/v1/scraper-status').then(r=>r.json());}catch{}
+    switch(state.page){
+      case'dashboard':if(!state.statsData)state.statsData=await api('/arbitrage/stats');if(!state.arbitrageData)state.arbitrageData=await api('/arbitrage?min_profit_pct=50&sort_by=profit_pct&sort_order=desc&per_page=10');rpc();break;
+      case'arbitrage':state.loading=true;rpc();const f=state.filters;const p=new URLSearchParams({min_profit_pct:f.min_profit_pct,sort_by:f.sort_by,sort_order:f.sort_order,page:f.page,per_page:f.per_page});if(f.game)p.set('game',f.game);if(f.search)p.set('search',f.search);if(f.marketplace_slug)p.set('marketplace_slug',f.marketplace_slug);state.arbitrageData=await api('/arbitrage?'+p);state.loading=false;rpc();break;
+      case'items':state.loading=true;rpc();const ip=state.itemFilters;const ip2=new URLSearchParams({page:ip.page,per_page:ip.per_page});if(ip.game)ip2.set('game',ip.game);if(ip.search)ip2.set('search',ip.search);state.itemsData=await api('/items?'+ip2);state.loading=false;rpc();break;
+      case'favorites':rpc();loadFavs();break;
+      case'marketplaces':rpc();break;
+      case'admin':if(!state.adminUsers)state.adminUsers=await api('/admin/users');if(!state.adminCodes)state.adminCodes=await api('/admin/invite-codes');rpc();break;
     }
-  } catch (e) {
-    console.error(e);
-    state.loading = false;
-    renderPageContent();
-  }
+  }catch(e){console.error(e);state.loading=false;rpc();}
 }
+function rpc(){const m=$('.main');if(m){m.innerHTML=renderPage();bindPageEvents();}}
 
-function renderPageContent() {
-  const main = $('.main');
-  if (main) { main.innerHTML = renderPage(); bindPageEvents(); }
-}
-
-// ============== Events ==============
-function bindEvents() {
-  // Auth
-  on('btn-login', 'click', async () => {
-    state.error = '';
-    const u = val('login-user'), p = val('login-pass');
-    if (!u || !p) { state.error = 'Fill all fields'; render(); return; }
-    try {
-      const data = await fetch(API + '/auth/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: p })
-      }).then(r => { if (!r.ok) throw r; return r.json(); });
-      state.token = data.access_token; state.refreshToken = data.refresh_token; state.user = data.user;
-      state.error = ''; saveSession(); state.page = 'dashboard'; render();
-    } catch (e) {
-      const err = await e.json?.().catch(() => null);
-      state.error = err?.detail || 'Login failed'; render();
-    }
-  });
-
-  on('btn-register', 'click', async () => {
-    state.error = '';
-    const u = val('reg-user'), em = val('reg-email'), p = val('reg-pass'), c = val('reg-code');
-    if (!u || !em || !p || !c) { state.error = 'Fill all fields'; render(); return; }
-    try {
-      const data = await fetch(API + '/auth/register', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, email: em, password: p, invite_code: c })
-      }).then(r => { if (!r.ok) throw r; return r.json(); });
-      state.token = data.access_token; state.refreshToken = data.refresh_token; state.user = data.user;
-      state.error = ''; saveSession(); state.page = 'dashboard'; render();
-    } catch (e) {
-      const err = await e.json?.().catch(() => null);
-      state.error = err?.detail || 'Registration failed'; render();
-    }
-  });
-
-  on('go-register', 'click', (e) => { e.preventDefault(); state.page = 'register'; state.error = ''; render(); });
-  on('go-login', 'click', (e) => { e.preventDefault(); state.page = 'login'; state.error = ''; render(); });
-  on('btn-logout', 'click', (e) => { e.preventDefault(); logout(); });
-
-  // Enter key for login/register
-  onEnter('login-pass', () => $('#btn-login')?.click());
-  onEnter('reg-code', () => $('#btn-register')?.click());
-
-  // Navigation
-  $$('[data-page]').forEach(el => {
-    el.addEventListener('click', (e) => {
-      e.preventDefault();
-      const p = el.dataset.page;
-      if (p !== state.page) {
-        state.page = p;
-        if (p === 'arbitrage') state.arbitrageData = null;
-        if (p === 'items') state.itemsData = null;
-        if (p === 'dashboard') { state.statsData = null; state.arbitrageData = null; }
-        render();
-      }
-    });
-  });
-
+// Events
+function bindEvents(){
+  on('btn-login','click',async()=>{state.error='';const u=val('login-user'),p=val('login-pass');if(!u||!p){state.error='Fill all fields';render();return;}try{const d=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})}).then(r=>{if(!r.ok)throw r;return r.json();});state.token=d.access_token;state.refreshToken=d.refresh_token;state.user=d.user;state.error='';saveSession();state.page='dashboard';render();}catch(e){const err=await e.json?.().catch(()=>null);state.error=err?.detail||'Login failed';render();}});
+  on('btn-register','click',async()=>{state.error='';const u=val('reg-user'),em=val('reg-email'),p=val('reg-pass'),c=val('reg-code');if(!u||!em||!p||!c){state.error='Fill all fields';render();return;}try{const d=await fetch(API+'/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,email:em,password:p,invite_code:c})}).then(r=>{if(!r.ok)throw r;return r.json();});state.token=d.access_token;state.refreshToken=d.refresh_token;state.user=d.user;state.error='';saveSession();state.page='dashboard';render();}catch(e){const err=await e.json?.().catch(()=>null);state.error=err?.detail||'Registration failed';render();}});
+  on('go-register','click',e=>{e.preventDefault();state.page='register';state.error='';render();});
+  on('go-login','click',e=>{e.preventDefault();state.page='login';state.error='';render();});
+  on('btn-logout','click',e=>{e.preventDefault();logout();});
+  onEnter('login-pass',()=>$('#btn-login')?.click());onEnter('reg-code',()=>$('#btn-register')?.click());
+  $$('[data-page]').forEach(el=>{el.addEventListener('click',e=>{e.preventDefault();const pg=el.dataset.page;if(pg!==state.page){state.page=pg;if(pg==='arbitrage')state.arbitrageData=null;if(pg==='items')state.itemsData=null;if(pg==='dashboard'){state.statsData=null;state.arbitrageData=null;}render();}});});
   bindPageEvents();
 }
-
-function bindPageEvents() {
-  // Scrape now button
-  on('btn-scrape-now', 'click', async () => {
-    try {
-      await api('/admin/scrape-now', { method: 'POST' });
-      pollScraperStatus();
-    } catch (e) { alert('Error: ' + e.message); }
-  });
-
-  // Arbitrage filters
-  on('btn-apply-filters', 'click', () => {
-    state.filters.min_profit_pct = parseFloat(val('f-min-profit')) || 0;
-    state.filters.game = val('f-game');
-    state.filters.search = val('f-search');
-    state.filters.sort_by = val('f-sort');
-    state.filters.page = 1;
-    state.arbitrageData = null;
-    loadPageData();
-  });
-  on('pg-prev', 'click', () => { state.filters.page--; state.arbitrageData = null; loadPageData(); });
-  on('pg-next', 'click', () => { state.filters.page++; state.arbitrageData = null; loadPageData(); });
-
-  // Item filters
-  on('btn-apply-item-filters', 'click', () => {
-    state.itemFilters.game = val('if-game');
-    state.itemFilters.search = val('if-search');
-    state.itemFilters.page = 1;
-    state.itemsData = null;
-    loadPageData();
-  });
-  on('ipg-prev', 'click', () => { state.itemFilters.page--; state.itemsData = null; loadPageData(); });
-  on('ipg-next', 'click', () => { state.itemFilters.page++; state.itemsData = null; loadPageData(); });
-
-  // Admin tabs
-  on('at-users', 'click', () => { const c = $('#admin-content'); if(c) c.innerHTML = renderAdminUsers(); });
-  on('at-codes', 'click', () => { const c = $('#admin-content'); if(c) c.innerHTML = renderAdminCodes(); });
-  on('btn-gen-code', 'click', async () => {
-    try {
-      await api('/admin/invite-codes', { method: 'POST', body: JSON.stringify({ max_uses: 1, grants_admin: false }) });
-      state.adminCodes = await api('/admin/invite-codes');
-      const c = $('#admin-content'); if(c) c.innerHTML = renderAdminCodes();
-    } catch (e) { alert('Error: ' + e.message); }
-  });
-
-  // Enter in search
-  onEnter('f-search', () => $('#btn-apply-filters')?.click());
-  onEnter('if-search', () => $('#btn-apply-item-filters')?.click());
+function bindPageEvents(){
+  on('btn-scrape-now','click',async()=>{try{await api('/admin/scrape-now',{method:'POST'});}catch(e){alert('Error: '+e.message);}});
+  on('btn-apply-filters','click',()=>{state.filters.min_profit_pct=parseFloat(val('f-min-profit'))||0;state.filters.game=val('f-game');state.filters.search=val('f-search');state.filters.sort_by=val('f-sort');state.filters.marketplace_slug=val('f-marketplace');state.filters.page=1;state.arbitrageData=null;loadPageData();});
+  on('pg-prev','click',()=>{state.filters.page--;state.arbitrageData=null;loadPageData();});
+  on('pg-next','click',()=>{state.filters.page++;state.arbitrageData=null;loadPageData();});
+  on('btn-apply-item-filters','click',()=>{state.itemFilters.game=val('if-game');state.itemFilters.search=val('if-search');state.itemFilters.page=1;state.itemsData=null;loadPageData();});
+  on('ipg-prev','click',()=>{state.itemFilters.page--;state.itemsData=null;loadPageData();});
+  on('ipg-next','click',()=>{state.itemFilters.page++;state.itemsData=null;loadPageData();});
+  on('at-users','click',()=>{const c=$('#admin-content');if(c)c.innerHTML=adminUsers();});
+  on('at-codes','click',()=>{const c=$('#admin-content');if(c)c.innerHTML=adminCodes();});
+  on('btn-gen-code','click',async()=>{try{await api('/admin/invite-codes',{method:'POST',body:JSON.stringify({max_uses:1,grants_admin:false})});state.adminCodes=await api('/admin/invite-codes');const c=$('#admin-content');if(c)c.innerHTML=adminCodes();}catch(e){alert('Error: '+e.message);}});
+  onEnter('f-search',()=>$('#btn-apply-filters')?.click());onEnter('if-search',()=>$('#btn-apply-item-filters')?.click());
 }
 
-// ============== Helpers ==============
-function on(id, event, fn) { const el = document.getElementById(id); if (el) el.addEventListener(event, fn); }
-function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
-function onEnter(id, fn) { on(id, 'keydown', (e) => { if (e.key === 'Enter') fn(); }); }
-function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function on(id,ev,fn){const el=document.getElementById(id);if(el)el.addEventListener(ev,fn);}
+function val(id){const el=document.getElementById(id);return el?el.value.trim():'';}
+function onEnter(id,fn){on(id,'keydown',e=>{if(e.key==='Enter')fn();});}
+function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 
-// ============== Init ==============
-loadSession();
-render();
+loadSession();render();
 </script>
 </body>
 </html>

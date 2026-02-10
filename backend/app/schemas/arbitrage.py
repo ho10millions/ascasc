@@ -14,6 +14,8 @@ class ArbitrageResponse(BaseModel):
     buy_marketplace_slug: str
     buy_marketplace_url: str
     steam_url: str
+    buy_marketplace_fee_pct: float = 5.0
+    steam_fee_pct: float = 13.0
     buy_price_usd: float
     steam_price_usd: float
     steam_price_after_fee: float

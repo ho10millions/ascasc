@@ -11,6 +11,25 @@ from app.schemas.arbitrage import ArbitrageFilters
 
 STEAM_FEE_MULTIPLIER = 0.87
 
+# Marketplace sell commission rates (approximate %)
+MARKETPLACE_FEES: dict[str, float] = {
+    "steam": 13.0,
+    "market-csgo": 5.0,
+    "waxpeer": 5.0,
+    "csfloat": 2.0,
+    "dmarket": 5.5,
+    "cs-money": 5.0,
+    "shadowpay": 5.0,
+    "loot-farm": 3.0,
+    "buff163": 2.5,
+    "buff-market": 2.5,
+    "swap-gg": 5.0,
+    "youpin898": 2.5,
+    "rapidskins": 5.0,
+    "skinswap": 5.0,
+    "cs-trade": 3.0,
+}
+
 # Game → Steam appid mapping
 GAME_APPID = {"cs2": "730", "csgo": "730", "dota2": "570", "tf2": "440", "rust": "252490"}
 
@@ -206,6 +225,8 @@ async def get_arbitrage_opportunities(
                 marketplace.slug, marketplace.base_url, item.market_hash_name
             ),
             "steam_url": build_steam_url(item.market_hash_name, item.game),
+            "buy_marketplace_fee_pct": MARKETPLACE_FEES.get(marketplace.slug, 5.0),
+            "steam_fee_pct": 13.0,
             "buy_price_usd": float(opp.buy_price_usd),
             "steam_price_usd": float(opp.steam_price_usd),
             "steam_price_after_fee": float(opp.steam_price_after_fee),
