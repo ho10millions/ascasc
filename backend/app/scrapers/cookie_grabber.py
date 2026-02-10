@@ -11,6 +11,7 @@ Usage:
 import argparse
 import os
 import sys
+import tempfile
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -46,8 +47,24 @@ def get_chrome_driver() -> webdriver.Chrome:
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+
+    # Use temp dir for Chrome profile to avoid System32 permission issues
+    user_data_dir = os.path.join(tempfile.gettempdir(), "scrooge_chrome_profile")
+    options.add_argument(f"--user-data-dir={user_data_dir}")
+
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
+
+    # Try to find Chrome binary
+    chrome_paths = [
+        os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
+        os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"),
+        os.path.expandvars(r"%LocalAppData%\Google\Chrome\Application\chrome.exe"),
+    ]
+    for path in chrome_paths:
+        if os.path.exists(path):
+            options.binary_location = path
+            break
 
     if HAS_WDM:
         service = Service(ChromeDriverManager().install())
