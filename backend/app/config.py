@@ -18,9 +18,11 @@ class Settings:
     PROXY_ROTATION_ENABLED = False
 
     # Cookie-based authentication for marketplaces
-    # Paste cookie string from browser DevTools (Network tab → Cookie header value)
     CS_MONEY_COOKIES = os.environ.get("CS_MONEY_COOKIES", "")
     BUFF163_COOKIES = os.environ.get("BUFF163_COOKIES", "")
+
+    # Chrome profile path for cookie grabber (auto-detected if empty)
+    CHROME_PROFILE_DIR = os.environ.get("CHROME_PROFILE_DIR", "")
 
 
 settings = Settings()

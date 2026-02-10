@@ -1,17 +1,29 @@
 """
-Cookie grabber — opens a real browser so you can log in manually.
-After login, cookies are saved to .env automatically.
+Cookie grabber — extracts cookies from your real Chrome profile.
+No manual login needed if you're already logged in to Chrome.
 
 Usage:
     python -m app.scrapers.cookie_grabber cs-money
     python -m app.scrapers.cookie_grabber buff163
     python -m app.scrapers.cookie_grabber all
+    python -m app.scrapers.cookie_grabber cs-money --refresh
+        (auto-refresh: opens cs.money to refresh cookies, then saves)
+
+First run:
+    1. CLOSE Chrome completely (important!)
+    2. Run the script — it opens Chrome with YOUR profile
+    3. You're already logged in (cookies from your browser)
+    4. Press Enter — cookies saved to .env
+
+After that, cookies stay fresh as long as you use Chrome normally.
+Use --refresh to auto-refresh without interaction.
 """
 
 import argparse
 import os
+import platform
 import sys
-import tempfile
+import time
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -23,15 +35,15 @@ try:
 except ImportError:
     HAS_WDM = False
 
-# Marketplace configs: slug -> (url, env_var_name)
+# Marketplace configs
 MARKETPLACES = {
     "cs-money": {
-        "url": "https://cs.money/",
+        "url": "https://cs.money/market/buy/",
         "env_var": "CS_MONEY_COOKIES",
         "name": "CS.Money",
     },
     "buff163": {
-        "url": "https://buff.163.com/",
+        "url": "https://buff.163.com/market/csgo",
         "env_var": "BUFF163_COOKIES",
         "name": "Buff163",
     },
@@ -40,26 +52,48 @@ MARKETPLACES = {
 ENV_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env")
 
 
-def get_chrome_driver() -> webdriver.Chrome:
-    """Create a Chrome driver with visible window for manual login."""
+def find_chrome_profile_dir() -> str | None:
+    """Find the default Chrome user data directory for the current OS."""
+    system = platform.system()
+    if system == "Windows":
+        path = os.path.expandvars(r"%LocalAppData%\Google\Chrome\User Data")
+    elif system == "Darwin":
+        path = os.path.expanduser("~/Library/Application Support/Google/Chrome")
+    else:  # Linux
+        path = os.path.expanduser("~/.config/google-chrome")
+
+    if os.path.exists(path):
+        return path
+    return None
+
+
+def get_chrome_driver(use_profile: bool = True) -> webdriver.Chrome:
+    """Create Chrome driver, optionally using the real user profile."""
     options = Options()
     options.add_argument("--start-maximized")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-
-    # Use temp dir for Chrome profile to avoid System32 permission issues
-    user_data_dir = os.path.join(tempfile.gettempdir(), "scrooge_chrome_profile")
-    options.add_argument(f"--user-data-dir={user_data_dir}")
-
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
+
+    if use_profile:
+        profile_dir = find_chrome_profile_dir()
+        if profile_dir:
+            options.add_argument(f"--user-data-dir={profile_dir}")
+            options.add_argument("--profile-directory=Default")
+            print(f"Используем Chrome профиль: {profile_dir}")
+        else:
+            print("Chrome профиль не найден, используем временный")
 
     # Try to find Chrome binary
     chrome_paths = [
         os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
         os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"),
         os.path.expandvars(r"%LocalAppData%\Google\Chrome\Application\chrome.exe"),
+        "/usr/bin/google-chrome",
+        "/usr/bin/chromium-browser",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     ]
     for path in chrome_paths:
         if os.path.exists(path):
@@ -72,7 +106,6 @@ def get_chrome_driver() -> webdriver.Chrome:
     else:
         driver = webdriver.Chrome(options=options)
 
-    # Hide webdriver flag from detection
     driver.execute_cdp_cmd(
         "Page.addScriptToEvaluateOnNewDocument",
         {"source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"},
@@ -110,53 +143,82 @@ def update_env_file(env_var: str, value: str) -> None:
         f.writelines(new_lines)
 
 
-def grab_cookies(slug: str) -> None:
-    """Open browser for a marketplace, wait for login, grab cookies."""
+def grab_cookies(slug: str, auto_refresh: bool = False) -> None:
+    """Extract cookies from Chrome profile for a marketplace."""
     mp = MARKETPLACES[slug]
     print(f"\n{'='*50}")
     print(f"  {mp['name']} — Cookie Grabber")
     print(f"{'='*50}")
-    print(f"\n1. Сейчас откроется браузер на {mp['url']}")
-    print("2. Залогинься в свой аккаунт")
-    print("3. Когда будешь залогинен — вернись сюда и нажми ENTER")
-    print()
 
-    driver = get_chrome_driver()
+    if not auto_refresh:
+        print(f"\n⚠  Закрой Chrome полностью перед запуском!")
+        print(f"   (Selenium не может открыть профиль если Chrome уже запущен)")
+        print()
+        input(">>> Закрыл Chrome? Жми ENTER... ")
+
+    print(f"\nОткрываем {mp['url']} с твоим Chrome профилем...")
+    driver = get_chrome_driver(use_profile=True)
     try:
         driver.get(mp["url"])
-        input(f">>> Нажми ENTER когда залогинишься на {mp['name']}... ")
+
+        if auto_refresh:
+            # Wait for page to load and cookies to be set
+            print("Ждём загрузку страницы (10 сек)...")
+            time.sleep(10)
+        else:
+            print(f"\nПроверь что ты залогинен на {mp['name']}")
+            print("(Если ты уже залогинен в Chrome — всё ок, просто жми Enter)")
+            input(f"\n>>> Нажми ENTER для сохранения куки... ")
 
         cookies = driver.get_cookies()
         if not cookies:
-            print("Куки не найдены. Попробуй ещё раз.")
+            print("Куки не найдены!")
             return
 
         cookie_string = cookies_to_string(cookies)
         update_env_file(mp["env_var"], cookie_string)
 
+        # Check if we got auth cookies
+        cookie_names = [c["name"] for c in cookies]
+        has_session = any(
+            name in cookie_names
+            for name in ["csgo_ses", "steamid", "session", "cf_clearance"]
+        )
+
         print(f"\nСохранено {len(cookies)} куки в .env ({mp['env_var']})")
-        print(f"Куки: {cookie_string[:80]}...")
+        if has_session:
+            print("Авторизованная сессия найдена!")
+        else:
+            print("Сессионные куки не найдены — возможно ты не залогинен")
+
     finally:
         driver.quit()
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Grab marketplace cookies via browser login")
+    parser = argparse.ArgumentParser(
+        description="Extract marketplace cookies from your Chrome profile"
+    )
     parser.add_argument(
         "marketplace",
         choices=list(MARKETPLACES.keys()) + ["all"],
         help="Which marketplace to grab cookies for",
     )
+    parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Auto-refresh mode: no interaction needed",
+    )
     args = parser.parse_args()
 
     if args.marketplace == "all":
         for slug in MARKETPLACES:
-            grab_cookies(slug)
+            grab_cookies(slug, auto_refresh=args.refresh)
     else:
-        grab_cookies(args.marketplace)
+        grab_cookies(args.marketplace, auto_refresh=args.refresh)
 
     print("\nГотово! Куки сохранены в .env")
-    print("Теперь скраперы будут использовать авторизованную сессию.")
+    print("Скраперы будут использовать авторизованную сессию.")
 
 
 if __name__ == "__main__":
