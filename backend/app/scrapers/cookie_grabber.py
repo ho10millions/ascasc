@@ -11,11 +11,16 @@ Usage:
 import argparse
 import os
 import sys
-import time
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+
+try:
+    from webdriver_manager.chrome import ChromeDriverManager
+    HAS_WDM = True
+except ImportError:
+    HAS_WDM = False
 
 # Marketplace configs: slug -> (url, env_var_name)
 MARKETPLACES = {
@@ -39,10 +44,17 @@ def get_chrome_driver() -> webdriver.Chrome:
     options = Options()
     options.add_argument("--start-maximized")
     options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
 
-    driver = webdriver.Chrome(options=options)
+    if HAS_WDM:
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+    else:
+        driver = webdriver.Chrome(options=options)
+
     # Hide webdriver flag from detection
     driver.execute_cdp_cmd(
         "Page.addScriptToEvaluateOnNewDocument",
@@ -63,7 +75,7 @@ def update_env_file(env_var: str, value: str) -> None:
     lines = []
     found = False
     if os.path.exists(env_path):
-        with open(env_path, "r") as f:
+        with open(env_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
     new_lines = []
@@ -77,7 +89,7 @@ def update_env_file(env_var: str, value: str) -> None:
     if not found:
         new_lines.append(f"{env_var}={value}\n")
 
-    with open(env_path, "w") as f:
+    with open(env_path, "w", encoding="utf-8") as f:
         f.writelines(new_lines)
 
 
