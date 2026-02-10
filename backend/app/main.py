@@ -26,49 +26,57 @@ scraper_status = {
 }
 
 
+# (name, slug, base_url, scraper_type, enabled)
+# enabled=True only for marketplaces with verified public APIs
 MARKETPLACE_SEEDS = [
-    ("Steam Market", "steam", "https://steamcommunity.com/market", "api"),
-    ("SkinSwap", "skinswap", "https://skinswap.com", "api"),
-    ("ShadowPay", "shadowpay", "https://shadowpay.com", "api"),
-    ("Skins.Cash", "skins-cash", "https://skins.cash", "api"),
-    ("White Market", "white-market", "https://white.market", "api"),
-    ("Waxpeer", "waxpeer", "https://waxpeer.com", "api"),
-    ("Lis-Skins", "lis-skins", "https://lis-skins.com", "api"),
-    ("Skinomat", "skinomat", "https://skinomat.com", "api"),
-    ("Aim Market", "aim-market", "https://aim.market", "api"),
-    ("Avan Market", "avan-market", "https://avan.market", "api"),
-    ("PirateSwap", "pirateswap", "https://pirateswap.com", "api"),
-    ("Moon Market", "moon-market", "https://moon.market", "api"),
-    ("Skin.Place", "skin-place", "https://skin.place", "api"),
-    ("CS.Money", "cs-money", "https://cs.money", "api"),
-    ("Skin.Land", "skin-land", "https://skin.land", "api"),
-    ("CSFloat", "csfloat", "https://csfloat.com", "api"),
-    ("iTrade.gg", "itrade-gg", "https://itrade.gg", "api"),
-    ("DMarket", "dmarket", "https://dmarket.com", "api"),
-    ("Skins.com", "skins-com", "https://skins.com", "api"),
-    ("SkinCashier", "skincashier", "https://skincashier.com", "api"),
-    ("Swap.gg", "swap-gg", "https://swap.gg", "api"),
-    ("Buff Market", "buff-market", "https://buff.market", "api"),
-    ("Market CSGO", "market-csgo", "https://market.csgo.com", "api"),
-    ("Buff163", "buff163", "https://buff.163.com", "api"),
-    ("CS.Trade", "cs-trade", "https://cs.trade", "api"),
-    ("Loot.Farm", "loot-farm", "https://loot.farm", "api"),
-    ("SkinCantor", "skincantor", "https://skincantor.com", "api"),
-    ("Skinout.gg", "skinout-gg", "https://skinout.gg", "api"),
-    ("Youpin898", "youpin898", "https://youpin898.com", "api"),
-    ("RapidSkins", "rapidskins", "https://rapidskins.com", "api"),
+    ("Steam Market", "steam", "https://steamcommunity.com/market", "api", True),
+    ("Market CSGO", "market-csgo", "https://market.csgo.com", "api", True),
+    ("Waxpeer", "waxpeer", "https://waxpeer.com", "api", True),
+    ("Loot.Farm", "loot-farm", "https://loot.farm", "api", True),
+    ("DMarket", "dmarket", "https://dmarket.com", "api", True),
+    ("CSFloat", "csfloat", "https://csfloat.com", "api", True),
+    ("CS.Money", "cs-money", "https://cs.money", "api", True),
+    ("ShadowPay", "shadowpay", "https://shadowpay.com", "api", True),
+    ("Buff163", "buff163", "https://buff.163.com", "api", True),
+    ("Buff Market", "buff-market", "https://buff.market", "api", True),
+    ("Swap.gg", "swap-gg", "https://swap.gg", "api", True),
+    ("Youpin898", "youpin898", "https://youpin898.com", "api", True),
+    ("RapidSkins", "rapidskins", "https://rapidskins.com", "api", True),
+    # Below: no verified public API — disabled by default (enable in Admin if needed)
+    ("SkinSwap", "skinswap", "https://skinswap.com", "api", False),
+    ("Skins.Cash", "skins-cash", "https://skins.cash", "api", False),
+    ("White Market", "white-market", "https://white.market", "api", False),
+    ("Lis-Skins", "lis-skins", "https://lis-skins.com", "api", False),
+    ("Skinomat", "skinomat", "https://skinomat.com", "api", False),
+    ("Aim Market", "aim-market", "https://aim.market", "api", False),
+    ("Avan Market", "avan-market", "https://avan.market", "api", False),
+    ("PirateSwap", "pirateswap", "https://pirateswap.com", "api", False),
+    ("Moon Market", "moon-market", "https://moon.market", "api", False),
+    ("Skin.Place", "skin-place", "https://skin.place", "api", False),
+    ("Skin.Land", "skin-land", "https://skin.land", "api", False),
+    ("iTrade.gg", "itrade-gg", "https://itrade.gg", "api", False),
+    ("Skins.com", "skins-com", "https://skins.com", "api", False),
+    ("SkinCashier", "skincashier", "https://skincashier.com", "api", False),
+    ("CS.Trade", "cs-trade", "https://cs.trade", "api", False),
+    ("SkinCantor", "skincantor", "https://skincantor.com", "api", False),
+    ("Skinout.gg", "skinout-gg", "https://skinout.gg", "api", False),
 ]
 
 
 async def seed_data():
     async with async_session_maker() as session:
-        for name, slug, url, scraper_type in MARKETPLACE_SEEDS:
+        for name, slug, url, scraper_type, enabled in MARKETPLACE_SEEDS:
             existing = await session.execute(
                 select(Marketplace).where(Marketplace.slug == slug)
             )
-            if not existing.scalar_one_or_none():
+            mkt = existing.scalar_one_or_none()
+            if mkt:
+                # Update enabled status for existing marketplaces
+                mkt.is_enabled = enabled
+            else:
                 session.add(Marketplace(
-                    name=name, slug=slug, base_url=url, scraper_type=scraper_type
+                    name=name, slug=slug, base_url=url,
+                    scraper_type=scraper_type, is_enabled=enabled,
                 ))
 
         existing_code = await session.execute(

@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from sqlalchemy import func, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +10,58 @@ from app.models.price import PriceSnapshot
 from app.schemas.arbitrage import ArbitrageFilters
 
 STEAM_FEE_MULTIPLIER = 0.87
+
+# Game → Steam appid mapping
+GAME_APPID = {"cs2": "730", "csgo": "730", "dota2": "570", "tf2": "440", "rust": "252490"}
+
+# Marketplace slug → item page URL template
+# {name} = raw name, {q} = URL-encoded name, {app} = Steam appid
+ITEM_URL_PATTERNS: dict[str, str] = {
+    "market-csgo": "https://market.csgo.com/?search={q}",
+    "waxpeer": "https://waxpeer.com/csgo/{q}",
+    "csfloat": "https://csfloat.com/search?market_hash_name={q}",
+    "dmarket": "https://dmarket.com/ingame-items/item-list/csgo-skins?title={q}",
+    "cs-money": "https://cs.money/market/buy/?search={q}",
+    "shadowpay": "https://shadowpay.com/csgo-items?search={q}",
+    "loot-farm": "https://loot.farm/",
+    "buff163": "https://buff.163.com/market/csgo#tab=selling&page_num=1&search={q}",
+    "buff-market": "https://buff.market/market/csgo#tab=selling&search={q}",
+    "swap-gg": "https://swap.gg/csgo/market?search={q}",
+    "rapidskins": "https://rapidskins.com/market/csgo?search={q}",
+    "cs-trade": "https://cs.trade/?search={q}",
+    "skinswap": "https://skinswap.com/csgo?search={q}",
+    "white-market": "https://white.market/market/csgo?search={q}",
+    "lis-skins": "https://lis-skins.com/?search={q}",
+    "skins-cash": "https://skins.cash/?search={q}",
+    "skins-com": "https://skins.com/market?search={q}",
+    "itrade-gg": "https://itrade.gg/csgo?search={q}",
+    "skincashier": "https://skincashier.com/?search={q}",
+    "youpin898": "https://youpin898.com/market/csgo?search={q}",
+    "skin-place": "https://skin.place/market?search={q}",
+    "skin-land": "https://skin.land/market?search={q}",
+    "skinomat": "https://skinomat.com/?search={q}",
+    "aim-market": "https://aim.market/?search={q}",
+    "avan-market": "https://avan.market/?search={q}",
+    "pirateswap": "https://pirateswap.com/?search={q}",
+    "moon-market": "https://moon.market/?search={q}",
+    "skincantor": "https://skincantor.com/?search={q}",
+    "skinout-gg": "https://skinout.gg/?search={q}",
+}
+
+
+def build_item_url(slug: str, base_url: str, market_hash_name: str) -> str:
+    """Build a direct link to the item on a marketplace."""
+    q = quote(market_hash_name, safe="")
+    template = ITEM_URL_PATTERNS.get(slug)
+    if template:
+        return template.replace("{q}", q).replace("{name}", market_hash_name)
+    return f"{base_url}?search={q}"
+
+
+def build_steam_url(market_hash_name: str, game: str = "cs2") -> str:
+    """Build a link to the item on Steam Market."""
+    app_id = GAME_APPID.get(game, "730")
+    return f"https://steamcommunity.com/market/listings/{app_id}/{quote(market_hash_name, safe='')}"
 
 
 async def calculate_arbitrage_for_item(
@@ -148,7 +202,10 @@ async def get_arbitrage_opportunities(
             "item_type": item.item_type,
             "buy_marketplace_name": marketplace.name,
             "buy_marketplace_slug": marketplace.slug,
-            "buy_marketplace_url": marketplace.base_url,
+            "buy_marketplace_url": build_item_url(
+                marketplace.slug, marketplace.base_url, item.market_hash_name
+            ),
+            "steam_url": build_steam_url(item.market_hash_name, item.game),
             "buy_price_usd": float(opp.buy_price_usd),
             "steam_price_usd": float(opp.steam_price_usd),
             "steam_price_after_fee": float(opp.steam_price_after_fee),

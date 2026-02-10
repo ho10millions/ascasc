@@ -356,15 +356,16 @@ function renderArbitrage() {
 function renderArbitrageTable(data, showPagination) {
   if (!data || !data.items || data.items.length === 0) return '<div class="table-wrap" style="padding:30px;text-align:center;color:var(--text2)">No opportunities found yet. Scraper will collect data automatically (check status above).</div>';
   let html = `<div class="table-wrap"><table>
-    <thead><tr><th>Item</th><th>Game</th><th>Buy From</th><th>Buy Price</th><th>Steam Price</th><th>After Fee</th><th>Profit $</th><th>Profit %</th></tr></thead><tbody>`;
+    <thead><tr><th>Item</th><th>Game</th><th>Buy From</th><th>Buy Price</th><th>Steam</th><th>After Fee</th><th>Profit $</th><th>Profit %</th></tr></thead><tbody>`;
   for (const o of data.items) {
     const cls = o.profit_pct >= 100 ? 'high' : o.profit_pct >= 50 ? 'medium' : 'low';
+    const steamLink = o.steam_url || '#';
     html += `<tr>
-      <td title="${esc(o.market_hash_name)}">${esc(o.market_hash_name.length > 40 ? o.market_hash_name.slice(0,37)+'...' : o.market_hash_name)}</td>
+      <td title="${esc(o.market_hash_name)}"><a href="${esc(steamLink)}" target="_blank" style="color:var(--text1);text-decoration:none;border-bottom:1px dashed var(--text2)">${esc(o.market_hash_name.length > 40 ? o.market_hash_name.slice(0,37)+'...' : o.market_hash_name)}</a></td>
       <td>${o.game.toUpperCase()}</td>
       <td><a href="${esc(o.buy_marketplace_url)}" target="_blank" class="mkt-link">${esc(o.buy_marketplace_name)}</a></td>
       <td>$${o.buy_price_usd.toFixed(2)}</td>
-      <td>$${o.steam_price_usd.toFixed(2)}</td>
+      <td><a href="${esc(steamLink)}" target="_blank" class="mkt-link" style="color:var(--blue,#6ea8fe)">$${o.steam_price_usd.toFixed(2)}</a></td>
       <td>$${o.steam_price_after_fee.toFixed(2)}</td>
       <td style="color:var(--green)">+$${o.profit_usd.toFixed(2)}</td>
       <td><span class="profit-badge ${cls}">+${o.profit_pct.toFixed(1)}%</span></td>
