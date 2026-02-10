@@ -6,3 +6,4 @@ aiohttp==3.11.11
 pydantic==2.10.4
 selenium>=4.15.0
 webdriver-manager>=4.0.0
+browser-cookie3>=0.19.1
