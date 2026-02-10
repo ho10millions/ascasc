@@ -37,6 +37,8 @@ docker-compose.override.yml
 
 # Database
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
 
 # Logs
