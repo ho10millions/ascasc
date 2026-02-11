@@ -3,9 +3,12 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
+from pathlib import Path
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
 from app.api.router import api_router
@@ -347,23 +350,34 @@ async def remove_favorite(item_id: str, user_id: str = ""):
     return {"status": "removed"}
 
 
-# ==================== Embedded Frontend ====================
-_frontend_path = os.path.join(os.path.dirname(__file__), "frontend.html")
-FRONTEND_HTML = ""
-if os.path.exists(_frontend_path):
-    with open(_frontend_path, "r", encoding="utf-8") as f:
-        FRONTEND_HTML = f.read()
-else:
-    FRONTEND_HTML = "<h1>Frontend not found</h1>"
+# ==================== Serve Built Frontend ====================
+# Frontend is built into ../frontend/dist by Vite
+_FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+_INDEX_HTML = _FRONTEND_DIST / "index.html"
+
+if _FRONTEND_DIST.is_dir() and (_FRONTEND_DIST / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=str(_FRONTEND_DIST / "assets")), name="static-assets")
+
+# Serve static files from frontend/dist root (favicon, etc.)
+@app.get("/favicon.svg")
+async def serve_favicon():
+    fav = _FRONTEND_DIST / "favicon.svg"
+    if fav.exists():
+        return FileResponse(str(fav), media_type="image/svg+xml")
+    return HTMLResponse("", status_code=404)
 
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
-    return FRONTEND_HTML
+    if _INDEX_HTML.exists():
+        return HTMLResponse(_INDEX_HTML.read_text(encoding="utf-8"))
+    return HTMLResponse("<h1>Frontend not built. Run: cd frontend && npm run build</h1>")
 
 
 @app.get("/{path:path}", response_class=HTMLResponse)
 async def serve_frontend_catchall(path: str):
     if path.startswith("api/") or path in ("health", "docs", "openapi.json", "redoc", "ws"):
         return None
-    return FRONTEND_HTML
+    if _INDEX_HTML.exists():
+        return HTMLResponse(_INDEX_HTML.read_text(encoding="utf-8"))
+    return HTMLResponse("<h1>Frontend not built. Run: cd frontend && npm run build</h1>")

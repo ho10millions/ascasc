@@ -1,10 +1,9 @@
 @echo off
 chcp 65001 >nul
-title Scrooge's Price Aggregator
+title Mammonia — Gaming Arbitrage
 echo.
 echo  ===================================
-echo   Scrooge's Price Aggregator
-echo   Gaming Arbitrage Hunter
+echo   Mammonia - Gaming Arbitrage
 echo  ===================================
 echo.
 
@@ -16,18 +15,37 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-REM Install dependencies
-echo [1/2] Installing dependencies...
-pip install -r "%~dp0requirements.txt" --quiet 2>nul
+REM Check Node
+node --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [WARN] pip install had issues, trying with --break-system-packages...
-    pip install -r "%~dp0requirements.txt" --quiet --break-system-packages 2>nul
+    echo [ERROR] Node.js not found! Install from nodejs.org
+    pause
+    exit /b 1
 )
 
-echo [2/2] Starting server...
+REM Install Python dependencies
+echo [1/4] Installing Python dependencies...
+pip install -r "%~dp0requirements.txt" --quiet 2>nul
+pip install aiosqlite --quiet 2>nul
+
+REM Install frontend dependencies
+echo [2/4] Installing frontend dependencies...
+cd /d "%~dp0frontend"
+call npm install --silent 2>nul
+
+REM Build frontend
+echo [3/4] Building frontend...
+call npm run build
+if %errorlevel% neq 0 (
+    echo [ERROR] Frontend build failed!
+    pause
+    exit /b 1
+)
+
+echo [4/4] Starting server...
 echo.
 echo  ====================================
-echo   Server starting at:
+echo   Mammonia running at:
 echo   http://localhost:8000
 echo  ====================================
 echo.
