@@ -8,55 +8,55 @@ export default function MammoniaLogo({ size = 40, className = "" }: { size?: num
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      {/* Outer glow ring */}
-      <circle cx="50" cy="50" r="46" stroke="url(#logo-gradient)" strokeWidth="2" opacity="0.6" />
-      <circle cx="50" cy="50" r="42" stroke="url(#logo-gradient)" strokeWidth="1" opacity="0.3" />
+      <defs>
+        <linearGradient id="logo-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f5d475" />
+          <stop offset="50%" stopColor="#d4a844" />
+          <stop offset="100%" stopColor="#b8860b" />
+        </linearGradient>
+        <linearGradient id="logo-gold-light" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#fce8a6" />
+          <stop offset="100%" stopColor="#d4a844" />
+        </linearGradient>
+        <linearGradient id="logo-bg-fill" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0c1220" />
+          <stop offset="100%" stopColor="#0a0e1a" />
+        </linearGradient>
+      </defs>
 
-      {/* Inner hexagonal shape */}
+      {/* Shield / diamond shape — premium feel */}
       <path
-        d="M50 8 L85 28 L85 72 L50 92 L15 72 L15 28 Z"
-        fill="url(#logo-bg)"
-        stroke="url(#logo-gradient)"
-        strokeWidth="1.5"
-        opacity="0.9"
-      />
-
-      {/* Dollar sign — stylized */}
-      <path
-        d="M50 25 L50 75"
-        stroke="url(#logo-gradient)"
+        d="M50 4 L90 25 L90 65 L50 96 L10 65 L10 25 Z"
+        fill="url(#logo-bg-fill)"
+        stroke="url(#logo-gold)"
         strokeWidth="2.5"
-        strokeLinecap="round"
-        opacity="0.8"
       />
+
+      {/* Inner border line — double frame like luxury brands */}
       <path
-        d="M62 35 C62 35 58 30 50 30 C42 30 37 34 37 39 C37 44 42 47 50 49 C58 51 63 54 63 60 C63 66 58 70 50 70 C42 70 38 65 38 65"
-        stroke="url(#logo-gradient)"
-        strokeWidth="3"
+        d="M50 12 L83 29 L83 63 L50 88 L17 63 L17 29 Z"
+        fill="none"
+        stroke="url(#logo-gold)"
+        strokeWidth="0.8"
+        opacity="0.5"
+      />
+
+      {/* Bold M letter — Mammonia monogram */}
+      <path
+        d="M30 68 L30 35 L42 55 L50 42 L58 55 L70 35 L70 68"
+        stroke="url(#logo-gold-light)"
+        strokeWidth="4"
         strokeLinecap="round"
+        strokeLinejoin="round"
         fill="none"
       />
 
-      {/* Steam-like circles (controller/joystick hint) */}
-      <circle cx="33" cy="45" r="4" fill="url(#logo-gradient)" opacity="0.4" />
-      <circle cx="67" cy="55" r="4" fill="url(#logo-gradient)" opacity="0.4" />
-
-      {/* Small accent dots */}
-      <circle cx="50" cy="22" r="2" fill="#22d3ee" opacity="0.9" />
-      <circle cx="50" cy="78" r="2" fill="#a78bfa" opacity="0.9" />
-
-      {/* Gradients */}
-      <defs>
-        <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#22d3ee" />
-          <stop offset="50%" stopColor="#06b6d4" />
-          <stop offset="100%" stopColor="#a78bfa" />
-        </linearGradient>
-        <linearGradient id="logo-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="rgba(6, 182, 212, 0.15)" />
-          <stop offset="100%" stopColor="rgba(167, 139, 250, 0.08)" />
-        </linearGradient>
-      </defs>
+      {/* Small diamond accent at top */}
+      <path
+        d="M50 16 L53 20 L50 24 L47 20 Z"
+        fill="url(#logo-gold)"
+        opacity="0.8"
+      />
     </svg>
   );
 }
