@@ -1,4 +1,4 @@
-"""CS.Money scraper - uses API endpoints with optional cookie auth."""
+"""CS.Money scraper - uses active-offers API with cookie auth."""
 
 import logging
 
@@ -14,52 +14,70 @@ class CSMoneyScraper(BaseScraper):
     marketplace_name = "CS.Money"
     scraper_type = "api"
 
-    API_URL = "https://cs.money/1.0/market/sell-orders"
+    API_URL = "https://cs.money/1.0/market/active-offers"
 
     async def scrape(self) -> list[ScrapedItem]:
         items = []
-        offset = 0
-        limit = 60
+        seen_names: dict[str, float] = {}
 
         cookies = settings.CS_MONEY_COOKIES or None
-        if cookies:
-            logger.info("CS.Money: using cookie-based authentication")
+        if not cookies:
+            logger.warning("CS.Money: no cookies configured — will likely get 403")
+            return items
 
-        while offset < 5000:
-            data = await fetch_json(
-                self.API_URL,
-                params={
-                    "limit": limit,
-                    "offset": offset,
-                    "sort": "price",
-                    "order": "asc",
-                },
-                cookies=cookies,
-            )
-            if not data:
-                break
+        logger.info("CS.Money: using cookie-based authentication")
 
-            results = data.get("items", data.get("data", []))
-            if not results:
-                break
+        # CS.Money active-offers uses updatedFrom timestamp for pagination
+        # updatedFrom=0 returns all active offers
+        extra_headers = {
+            "Referer": "https://cs.money/market/buy/",
+            "Origin": "https://cs.money",
+            "Accept": "application/json, text/plain, */*",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
+        }
 
-            for item in results:
-                name_info = item.get("asset", item)
-                name = name_info.get("names", {}).get("full", "") or item.get("name", "")
-                if not name:
-                    name = name_info.get("market_hash_name", "")
-                price = item.get("pricing", {}).get("computed", item.get("price", 0))
+        data = await fetch_json(
+            self.API_URL,
+            params={"updatedFrom": "0"},
+            headers=extra_headers,
+            cookies=cookies,
+        )
 
-                if isinstance(price, str):
-                    try:
-                        price = float(price)
-                    except ValueError:
-                        continue
+        if not data:
+            logger.error("CS.Money: no data returned (likely 403 — cookies/cf_clearance expired)")
+            return items
+
+        # Response can be a list or a dict with items
+        offers = []
+        if isinstance(data, list):
+            offers = data
+        elif isinstance(data, dict):
+            offers = data.get("offers", data.get("items", data.get("data", [])))
+            if not offers and not any(k in data for k in ("offers", "items", "data")):
+                # Maybe the dict itself contains offer-like data at top level
+                logger.info(f"CS.Money: response keys: {list(data.keys())[:20]}")
+
+        logger.info(f"CS.Money: got {len(offers)} raw offers")
+
+        for item in offers:
+            try:
+                name = self._extract_name(item)
+                price = self._extract_price(item)
 
                 if not name or price <= 0:
                     continue
 
-                img = name_info.get("image") or item.get("img") or item.get("icon_url")
+                # Deduplicate — keep cheapest price per item name
+                if name in seen_names:
+                    if price < seen_names[name]:
+                        seen_names[name] = price
+                    continue
+
+                seen_names[name] = price
+
+                img = self._extract_image(item)
 
                 items.append(ScrapedItem(
                     market_hash_name=name,
@@ -68,7 +86,69 @@ class CSMoneyScraper(BaseScraper):
                     icon_url=img,
                     item_type=classify_item_type(name),
                 ))
+            except Exception as e:
+                logger.debug(f"CS.Money: error parsing item: {e}")
+                continue
 
-            offset += limit
+        # Update prices for deduplicated items
+        for item in items:
+            if item.market_hash_name in seen_names:
+                item.price_usd = round(seen_names[item.market_hash_name], 2)
 
+        logger.info(f"CS.Money: scraped {len(items)} unique items")
         return items
+
+    def _extract_name(self, item: dict) -> str:
+        """Try multiple paths to find item name."""
+        # Try nested asset.names.full
+        asset = item.get("asset", {})
+        if isinstance(asset, dict):
+            names = asset.get("names", {})
+            if isinstance(names, dict) and names.get("full"):
+                return names["full"]
+            if asset.get("market_hash_name"):
+                return asset["market_hash_name"]
+            if asset.get("name"):
+                return asset["name"]
+
+        # Try direct fields
+        for key in ("market_hash_name", "marketHashName", "name", "fullName", "full_name"):
+            if item.get(key):
+                return item[key]
+
+        return ""
+
+    def _extract_price(self, item: dict) -> float:
+        """Try multiple paths to find price."""
+        # Try pricing.computed
+        pricing = item.get("pricing", {})
+        if isinstance(pricing, dict):
+            for key in ("computed", "default", "price", "amount"):
+                val = pricing.get(key)
+                if val is not None:
+                    return float(val)
+
+        # Try direct price fields
+        for key in ("price", "priceUsd", "price_usd", "amount", "cost"):
+            val = item.get(key)
+            if val is not None:
+                try:
+                    return float(val)
+                except (ValueError, TypeError):
+                    continue
+
+        return 0.0
+
+    def _extract_image(self, item: dict) -> str | None:
+        """Try multiple paths to find image URL."""
+        asset = item.get("asset", {})
+        if isinstance(asset, dict):
+            for key in ("image", "img", "icon_url", "iconUrl"):
+                if asset.get(key):
+                    return asset[key]
+
+        for key in ("image", "img", "icon_url", "iconUrl"):
+            if item.get(key):
+                return item[key]
+
+        return None
