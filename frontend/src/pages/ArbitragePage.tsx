@@ -2,16 +2,35 @@ import { useQuery } from "@tanstack/react-query";
 import { useFilterStore } from "../stores/filterStore";
 import { getArbitrageOpportunities } from "../api/arbitrage";
 import { getMarketplaces } from "../api/admin";
-import { Search, SlidersHorizontal, ExternalLink, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, SlidersHorizontal, ExternalLink, TrendingUp, ChevronLeft, ChevronRight, Radio, Clock, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import clsx from "clsx";
 
 function formatUSD(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
+function timeAgo(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ${mins % 60}m ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 export default function ArbitragePage() {
   const filters = useFilterStore();
   const { setFilter } = filters;
+
+  const { data: scraperStatus } = useQuery({
+    queryKey: ["scraper-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/v1/scraper-status");
+      return res.json();
+    },
+    refetchInterval: 5_000,
+  });
 
   const { data: marketplaces } = useQuery({
     queryKey: ["marketplaces"],
@@ -68,6 +87,62 @@ export default function ArbitragePage() {
           </div>
         </div>
       </div>
+
+      {/* Scraper Status Widget */}
+      {scraperStatus && (
+        <div className="card animate-slide-up flex items-center justify-between gap-4 py-3 px-5">
+          <div className="flex items-center gap-3">
+            {scraperStatus.running ? (
+              <>
+                <div className="relative">
+                  <Loader2 size={18} className="text-primary-400 animate-spin" />
+                  <div className="absolute inset-0 bg-primary-400/20 rounded-full animate-ping" />
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-primary-400">Scraper active</span>
+                  {scraperStatus.current_marketplace && (
+                    <span className="text-dark-400 text-xs ml-2">
+                      Scanning <span className="text-dark-300 font-medium">{scraperStatus.current_marketplace}</span>...
+                    </span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <Radio size={16} className="text-dark-500" />
+                <span className="text-sm text-dark-400">Scraper idle</span>
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center gap-4 text-xs">
+            {scraperStatus.last_run && (
+              <div className="flex items-center gap-1.5 text-dark-400">
+                <Clock size={12} />
+                <span>Last run: <span className="text-dark-300 font-mono">{timeAgo(scraperStatus.last_run)}</span></span>
+              </div>
+            )}
+            {scraperStatus.last_result && (
+              <div className="flex items-center gap-1.5">
+                {scraperStatus.last_result === "success" ? (
+                  <CheckCircle2 size={12} className="text-emerald-400" />
+                ) : (
+                  <XCircle size={12} className="text-red-400" />
+                )}
+                <span className={clsx(
+                  "font-medium",
+                  scraperStatus.last_result === "success" ? "text-emerald-400" : "text-red-400"
+                )}>
+                  {scraperStatus.last_result === "success" ? "Success" : "Error"}
+                </span>
+              </div>
+            )}
+            {scraperStatus.items_total > 0 && (
+              <span className="text-dark-500 font-mono">{scraperStatus.items_total} items</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="card animate-slide-up">
