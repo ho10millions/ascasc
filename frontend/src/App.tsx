@@ -13,6 +13,7 @@ import MarketplacesPage from "./pages/MarketplacesPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import InviteCodesPage from "./pages/admin/InviteCodesPage";
 import UsersPage from "./pages/admin/UsersPage";
+import SecretPage from "./pages/SecretPage";
 
 export default function App() {
   const loadFromStorage = useAuthStore((s) => s.loadFromStorage);
@@ -32,6 +33,8 @@ export default function App() {
           <Route path="/arbitrage" element={<ArbitragePage />} />
           <Route path="/items/:itemId" element={<ItemDetailPage />} />
           <Route path="/marketplaces" element={<MarketplacesPage />} />
+
+          <Route path="/secret" element={<SecretPage />} />
 
           <Route element={<AdminRoute />}>
             <Route path="/admin" element={<AdminDashboard />} />
