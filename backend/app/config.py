@@ -21,6 +21,13 @@ class Settings:
     CS_MONEY_COOKIES = os.environ.get("CS_MONEY_COOKIES", "")
     BUFF163_COOKIES = os.environ.get("BUFF163_COOKIES", "")
 
+    # API keys for marketplaces with official APIs
+    RAPIDSKINS_API_KEY = os.environ.get("RAPIDSKINS_API_KEY", "")
+    SKINOUT_API_KEY = os.environ.get("SKINOUT_API_KEY", "")
+    SKINOUT_PROJECT_ID = os.environ.get("SKINOUT_PROJECT_ID", "")
+    SWAP_GG_API_KEY = os.environ.get("SWAP_GG_API_KEY", "")
+    WHITE_MARKET_API_KEY = os.environ.get("WHITE_MARKET_API_KEY", "")
+
     # Chrome profile path for cookie grabber (auto-detected if empty)
     CHROME_PROFILE_DIR = os.environ.get("CHROME_PROFILE_DIR", "")
 

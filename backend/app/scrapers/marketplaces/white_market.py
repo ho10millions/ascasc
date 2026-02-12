@@ -1,7 +1,11 @@
-"""White.Market scraper - uses API."""
+"""White.Market scraper - uses S3 price export JSON (no auth required)."""
+
+import logging
 
 from app.scrapers.base import BaseScraper, ScrapedItem
 from app.scrapers.utils import fetch_json, classify_item_type
+
+logger = logging.getLogger(__name__)
 
 
 class WhiteMarketScraper(BaseScraper):
@@ -9,26 +13,31 @@ class WhiteMarketScraper(BaseScraper):
     marketplace_name = "White Market"
     scraper_type = "api"
 
-    API_URL = "https://white.market/api/v1/items"
+    # Public price export — no API key needed, updated frequently
+    PRICES_URL = "https://s3.white.market/export/v1/prices/730.json"
 
     async def scrape(self) -> list[ScrapedItem]:
         items = []
-        page = 1
-        while page <= 50:
-            data = await fetch_json(
-                self.API_URL,
-                params={"page": page, "per_page": 100, "game": "csgo"},
-            )
-            if not data:
-                break
 
-            results = data.get("data", data.get("items", []))
-            if not results:
-                break
+        data = await fetch_json(self.PRICES_URL)
+        if not data:
+            logger.warning("White Market: no data from S3 price export")
+            return items
 
-            for item in results:
-                name = item.get("market_hash_name") or item.get("name", "")
-                price = item.get("price") or item.get("min_price", 0)
+        # The export returns a list of items or a dict with items
+        results = data if isinstance(data, list) else data.get("items", data.get("data", []))
+
+        for item in results:
+            try:
+                name = item.get("market_hash_name") or item.get("marketHashName") or item.get("name", "")
+                # Price may be in different fields
+                price = (
+                    item.get("price")
+                    or item.get("min_price")
+                    or item.get("cheapest")
+                    or item.get("lowest_price")
+                    or 0
+                )
                 if isinstance(price, str):
                     try:
                         price = float(price)
@@ -44,8 +53,11 @@ class WhiteMarketScraper(BaseScraper):
                     game="cs2",
                     icon_url=item.get("image") or item.get("icon_url"),
                     item_type=classify_item_type(name),
+                    listing_count=item.get("count") or item.get("quantity"),
                 ))
+            except Exception as e:
+                logger.debug(f"White Market: error parsing item: {e}")
+                continue
 
-            page += 1
-
+        logger.info(f"White Market: scraped {len(items)} items from S3 export")
         return items
