@@ -13,12 +13,14 @@ class ArbitrageResponse(BaseModel):
     buy_marketplace_name: str
     buy_marketplace_slug: str
     buy_marketplace_url: str
-    steam_url: str
+    sell_marketplace_name: str
+    sell_marketplace_slug: str
+    sell_marketplace_url: str
     buy_marketplace_fee_pct: float = 5.0
-    steam_fee_pct: float = 13.0
+    sell_marketplace_fee_pct: float = 5.0
     buy_price_usd: float
-    steam_price_usd: float
-    steam_price_after_fee: float
+    sell_price_usd: float
+    sell_price_after_fee: float
     profit_usd: float
     profit_pct: float
     is_active: bool
@@ -34,7 +36,9 @@ class ArbitrageFilters(BaseModel):
     item_type: str | None = None
     min_price: float | None = None
     max_price: float | None = None
-    marketplace_slug: str | None = None
+    marketplace_slug: str | None = None  # legacy: filters buy side
+    buy_marketplace_slug: str | None = None
+    sell_marketplace_slug: str | None = None
     search: str | None = None
     sort_by: str = "profit_pct"
     sort_order: str = "desc"

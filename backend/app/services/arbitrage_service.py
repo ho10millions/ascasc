@@ -1,7 +1,8 @@
 from urllib.parse import quote
 
-from sqlalchemy import func, select, and_
+from sqlalchemy import func, select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.models.arbitrage import ArbitrageOpportunity
 from app.models.item import Item
@@ -28,6 +29,21 @@ MARKETPLACE_FEES: dict[str, float] = {
     "rapidskins": 5.0,
     "skinswap": 5.0,
     "cs-trade": 3.0,
+    "white-market": 5.0,
+    "lis-skins": 5.0,
+    "skins-cash": 5.0,
+    "skins-com": 5.0,
+    "itrade-gg": 5.0,
+    "skincashier": 5.0,
+    "skin-place": 5.0,
+    "skin-land": 5.0,
+    "skinomat": 5.0,
+    "aim-market": 5.0,
+    "avan-market": 5.0,
+    "pirateswap": 5.0,
+    "moon-market": 5.0,
+    "skincantor": 5.0,
+    "skinout-gg": 5.0,
 }
 
 # Game → Steam appid mapping
@@ -36,6 +52,7 @@ GAME_APPID = {"cs2": "730", "csgo": "730", "dota2": "570", "tf2": "440", "rust":
 # Marketplace slug → item page URL template
 # {name} = raw name, {q} = URL-encoded name, {app} = Steam appid
 ITEM_URL_PATTERNS: dict[str, str] = {
+    "steam": "https://steamcommunity.com/market/listings/730/{q}",
     "market-csgo": "https://market.csgo.com/?search={q}",
     "waxpeer": "https://waxpeer.com/csgo/{q}",
     "csfloat": "https://csfloat.com/search?market_hash_name={q}",
@@ -68,6 +85,12 @@ ITEM_URL_PATTERNS: dict[str, str] = {
 }
 
 
+def get_sell_fee_multiplier(slug: str) -> float:
+    """Return (1 - fee%) multiplier for selling on a marketplace."""
+    fee_pct = MARKETPLACE_FEES.get(slug, 5.0)
+    return 1.0 - (fee_pct / 100.0)
+
+
 def build_item_url(slug: str, base_url: str, market_hash_name: str) -> str:
     """Build a direct link to the item on a marketplace."""
     q = quote(market_hash_name, safe="")
@@ -84,16 +107,21 @@ def build_steam_url(market_hash_name: str, game: str = "cs2") -> str:
 
 
 async def calculate_arbitrage_for_item(
-    db: AsyncSession, item_id: str, steam_price: float
+    db: AsyncSession, item_id: str
 ) -> list[ArbitrageOpportunity]:
-    steam_after_fee = steam_price * STEAM_FEE_MULTIPLIER
+    """Calculate cross-marketplace arbitrage for an item.
 
+    Compares every pair of marketplaces: buy on one, sell on another.
+    Accounts for the sell-side marketplace fee.
+    """
+    # Deactivate previous opportunities for this item
     await db.execute(
         ArbitrageOpportunity.__table__.update()
         .where(ArbitrageOpportunity.item_id == item_id)
         .values(is_active=False)
     )
 
+    # Get latest price snapshot for each marketplace
     latest_sub = (
         select(
             PriceSnapshot.marketplace_id,
@@ -114,36 +142,49 @@ async def calculate_arbitrage_for_item(
                 PriceSnapshot.scraped_at == latest_sub.c.max_time,
             ),
         )
-        .where(
-            PriceSnapshot.item_id == item_id,
-            Marketplace.slug != "steam",
-        )
+        .where(PriceSnapshot.item_id == item_id)
     )
 
     results = (await db.execute(query)).all()
+
+    # Build marketplace price map: {marketplace_id: (price, marketplace)}
+    price_map: dict[int, tuple[float, Marketplace]] = {}
+    for snapshot, marketplace in results:
+        price = float(snapshot.price_usd)
+        if price > 0:
+            price_map[marketplace.id] = (price, marketplace)
+
     opportunities = []
 
-    for snapshot, marketplace in results:
-        buy_price = float(snapshot.price_usd)
-        if buy_price <= 0:
-            continue
+    # Compare every pair: buy on A, sell on B
+    for buy_mp_id, (buy_price, buy_mp) in price_map.items():
+        for sell_mp_id, (sell_price, sell_mp) in price_map.items():
+            if buy_mp_id == sell_mp_id:
+                continue
 
-        profit_usd = steam_after_fee - buy_price
-        profit_pct = ((steam_after_fee / buy_price) - 1) * 100
+            # Apply sell-side fee
+            sell_fee_mult = get_sell_fee_multiplier(sell_mp.slug)
+            sell_after_fee = sell_price * sell_fee_mult
 
-        if profit_pct >= 0:
-            opp = ArbitrageOpportunity(
-                item_id=item_id,
-                buy_marketplace_id=marketplace.id,
-                buy_price_usd=buy_price,
-                steam_price_usd=steam_price,
-                steam_price_after_fee=steam_after_fee,
-                profit_usd=round(profit_usd, 2),
-                profit_pct=round(profit_pct, 2),
-                is_active=True,
-            )
-            db.add(opp)
-            opportunities.append(opp)
+            profit_usd = sell_after_fee - buy_price
+            if buy_price <= 0:
+                continue
+            profit_pct = ((sell_after_fee / buy_price) - 1) * 100
+
+            if profit_pct >= 0:
+                opp = ArbitrageOpportunity(
+                    item_id=item_id,
+                    buy_marketplace_id=buy_mp_id,
+                    sell_marketplace_id=sell_mp_id,
+                    buy_price_usd=buy_price,
+                    sell_price_usd=sell_price,
+                    sell_price_after_fee=round(sell_after_fee, 2),
+                    profit_usd=round(profit_usd, 2),
+                    profit_pct=round(profit_pct, 2),
+                    is_active=True,
+                )
+                db.add(opp)
+                opportunities.append(opp)
 
     await db.flush()
     return opportunities
@@ -152,6 +193,9 @@ async def calculate_arbitrage_for_item(
 async def get_arbitrage_opportunities(
     db: AsyncSession, filters: ArbitrageFilters
 ) -> tuple[list[dict], int]:
+    BuyMP = aliased(Marketplace, name="buy_mp")
+    SellMP = aliased(Marketplace, name="sell_mp")
+
     base_where = [ArbitrageOpportunity.is_active.is_(True)]
 
     if filters.min_profit_pct > 0:
@@ -160,15 +204,17 @@ async def get_arbitrage_opportunities(
         base_where.append(ArbitrageOpportunity.profit_pct <= filters.max_profit_pct)
 
     query = (
-        select(ArbitrageOpportunity, Item, Marketplace)
+        select(ArbitrageOpportunity, Item, BuyMP, SellMP)
         .join(Item, ArbitrageOpportunity.item_id == Item.id)
-        .join(Marketplace, ArbitrageOpportunity.buy_marketplace_id == Marketplace.id)
+        .join(BuyMP, ArbitrageOpportunity.buy_marketplace_id == BuyMP.id)
+        .join(SellMP, ArbitrageOpportunity.sell_marketplace_id == SellMP.id)
         .where(*base_where)
     )
     count_query = (
         select(func.count(ArbitrageOpportunity.id))
         .join(Item, ArbitrageOpportunity.item_id == Item.id)
-        .join(Marketplace, ArbitrageOpportunity.buy_marketplace_id == Marketplace.id)
+        .join(BuyMP, ArbitrageOpportunity.buy_marketplace_id == BuyMP.id)
+        .join(SellMP, ArbitrageOpportunity.sell_marketplace_id == SellMP.id)
         .where(*base_where)
     )
 
@@ -184,9 +230,16 @@ async def get_arbitrage_opportunities(
     if filters.max_price is not None:
         query = query.where(ArbitrageOpportunity.buy_price_usd <= filters.max_price)
         count_query = count_query.where(ArbitrageOpportunity.buy_price_usd <= filters.max_price)
-    if filters.marketplace_slug:
-        query = query.where(Marketplace.slug == filters.marketplace_slug)
-        count_query = count_query.where(Marketplace.slug == filters.marketplace_slug)
+    if filters.buy_marketplace_slug:
+        query = query.where(BuyMP.slug == filters.buy_marketplace_slug)
+        count_query = count_query.where(BuyMP.slug == filters.buy_marketplace_slug)
+    if filters.sell_marketplace_slug:
+        query = query.where(SellMP.slug == filters.sell_marketplace_slug)
+        count_query = count_query.where(SellMP.slug == filters.sell_marketplace_slug)
+    # Legacy filter: marketplace_slug filters buy side
+    if filters.marketplace_slug and not filters.buy_marketplace_slug:
+        query = query.where(BuyMP.slug == filters.marketplace_slug)
+        count_query = count_query.where(BuyMP.slug == filters.marketplace_slug)
     if filters.search:
         query = query.where(Item.market_hash_name.ilike(f"%{filters.search}%"))
         count_query = count_query.where(Item.market_hash_name.ilike(f"%{filters.search}%"))
@@ -195,7 +248,7 @@ async def get_arbitrage_opportunities(
         "profit_pct": ArbitrageOpportunity.profit_pct,
         "profit_usd": ArbitrageOpportunity.profit_usd,
         "buy_price": ArbitrageOpportunity.buy_price_usd,
-        "steam_price": ArbitrageOpportunity.steam_price_usd,
+        "sell_price": ArbitrageOpportunity.sell_price_usd,
         "detected_at": ArbitrageOpportunity.detected_at,
         "name": Item.market_hash_name,
     }
@@ -211,7 +264,7 @@ async def get_arbitrage_opportunities(
     results = (await db.execute(query)).all()
 
     items = []
-    for opp, item, marketplace in results:
+    for opp, item, buy_marketplace, sell_marketplace in results:
         items.append({
             "id": opp.id,
             "item_id": item.id,
@@ -219,17 +272,21 @@ async def get_arbitrage_opportunities(
             "game": item.game,
             "icon_url": item.icon_url,
             "item_type": item.item_type,
-            "buy_marketplace_name": marketplace.name,
-            "buy_marketplace_slug": marketplace.slug,
+            "buy_marketplace_name": buy_marketplace.name,
+            "buy_marketplace_slug": buy_marketplace.slug,
             "buy_marketplace_url": build_item_url(
-                marketplace.slug, marketplace.base_url, item.market_hash_name
+                buy_marketplace.slug, buy_marketplace.base_url, item.market_hash_name
             ),
-            "steam_url": build_steam_url(item.market_hash_name, item.game),
-            "buy_marketplace_fee_pct": MARKETPLACE_FEES.get(marketplace.slug, 5.0),
-            "steam_fee_pct": 13.0,
+            "sell_marketplace_name": sell_marketplace.name,
+            "sell_marketplace_slug": sell_marketplace.slug,
+            "sell_marketplace_url": build_item_url(
+                sell_marketplace.slug, sell_marketplace.base_url, item.market_hash_name
+            ),
+            "buy_marketplace_fee_pct": MARKETPLACE_FEES.get(buy_marketplace.slug, 5.0),
+            "sell_marketplace_fee_pct": MARKETPLACE_FEES.get(sell_marketplace.slug, 5.0),
             "buy_price_usd": float(opp.buy_price_usd),
-            "steam_price_usd": float(opp.steam_price_usd),
-            "steam_price_after_fee": float(opp.steam_price_after_fee),
+            "sell_price_usd": float(opp.sell_price_usd),
+            "sell_price_after_fee": float(opp.sell_price_after_fee),
             "profit_usd": float(opp.profit_usd),
             "profit_pct": float(opp.profit_pct),
             "is_active": opp.is_active,

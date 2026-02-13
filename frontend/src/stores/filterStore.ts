@@ -8,6 +8,8 @@ interface FilterState {
   minPrice: number | undefined;
   maxPrice: number | undefined;
   marketplaceSlug: string;
+  buyMarketplaceSlug: string;
+  sellMarketplaceSlug: string;
   search: string;
   sortBy: string;
   sortOrder: string;
@@ -25,6 +27,8 @@ const defaults = {
   minPrice: undefined as number | undefined,
   maxPrice: undefined as number | undefined,
   marketplaceSlug: "",
+  buyMarketplaceSlug: "",
+  sellMarketplaceSlug: "",
   search: "",
   sortBy: "profit_pct",
   sortOrder: "desc",

@@ -34,9 +34,14 @@ export interface ArbitrageOpportunity {
   buy_marketplace_name: string;
   buy_marketplace_slug: string;
   buy_marketplace_url: string;
+  sell_marketplace_name: string;
+  sell_marketplace_slug: string;
+  sell_marketplace_url: string;
+  buy_marketplace_fee_pct: number;
+  sell_marketplace_fee_pct: number;
   buy_price_usd: number;
-  steam_price_usd: number;
-  steam_price_after_fee: number;
+  sell_price_usd: number;
+  sell_price_after_fee: number;
   profit_usd: number;
   profit_pct: number;
   is_active: boolean;
@@ -119,6 +124,8 @@ export interface ArbitrageFilters {
   min_price?: number;
   max_price?: number;
   marketplace_slug?: string;
+  buy_marketplace_slug?: string;
+  sell_marketplace_slug?: string;
   search?: string;
   sort_by: string;
   sort_order: string;

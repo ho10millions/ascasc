@@ -13,7 +13,6 @@ from app.models.price import PriceSnapshot
 from app.models.scrape_job import ScrapeJob
 from app.scrapers.registry import get_scraper
 from app.services.arbitrage_service import calculate_arbitrage_for_item
-from app.services.price_service import get_latest_steam_price
 
 logger = logging.getLogger(__name__)
 
@@ -87,10 +86,8 @@ async def run_arbitrage_calculation(on_progress=None):
 
         calculated = 0
         for item_id in item_ids:
-            steam_price = await get_latest_steam_price(db, item_id)
-            if steam_price and steam_price > 0:
-                await calculate_arbitrage_for_item(db, item_id, steam_price)
-                calculated += 1
+            await calculate_arbitrage_for_item(db, item_id)
+            calculated += 1
 
         await db.commit()
         logger.info(f"Arbitrage recalculated for {calculated} items")

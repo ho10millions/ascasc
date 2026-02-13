@@ -12,6 +12,8 @@ export async function getArbitrageOpportunities(
   if (filters.min_price !== undefined) params.min_price = filters.min_price;
   if (filters.max_price !== undefined) params.max_price = filters.max_price;
   if (filters.marketplace_slug) params.marketplace_slug = filters.marketplace_slug;
+  if (filters.buy_marketplace_slug) params.buy_marketplace_slug = filters.buy_marketplace_slug;
+  if (filters.sell_marketplace_slug) params.sell_marketplace_slug = filters.sell_marketplace_slug;
   if (filters.search) params.search = filters.search;
   if (filters.sort_by) params.sort_by = filters.sort_by;
   if (filters.sort_order) params.sort_order = filters.sort_order;
