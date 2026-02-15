@@ -2,6 +2,8 @@
 
 import logging
 
+import aiohttp
+
 from app.config import settings
 from app.scrapers.base import BaseScraper, ScrapedItem
 from app.scrapers.utils import fetch_json, classify_item_type
@@ -31,7 +33,6 @@ class SwapGGScraper(BaseScraper):
         max_pages = 50
 
         for page in range(max_pages):
-            import aiohttp
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.post(

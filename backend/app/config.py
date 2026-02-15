@@ -27,6 +27,8 @@ class Settings:
     SKINOUT_PROJECT_ID = os.environ.get("SKINOUT_PROJECT_ID", "")
     SWAP_GG_API_KEY = os.environ.get("SWAP_GG_API_KEY", "")
     WHITE_MARKET_API_KEY = os.environ.get("WHITE_MARKET_API_KEY", "")
+    WAXPEER_API_KEY = os.environ.get("WAXPEER_API_KEY", "")
+    SHADOWPAY_API_KEY = os.environ.get("SHADOWPAY_API_KEY", "")
 
     # Chrome profile path for cookie grabber (auto-detected if empty)
     CHROME_PROFILE_DIR = os.environ.get("CHROME_PROFILE_DIR", "")

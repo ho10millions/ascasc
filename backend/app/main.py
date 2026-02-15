@@ -80,8 +80,8 @@ MARKETPLACE_SEEDS = [
     # No verified public API — disabled by default
     ("SkinSwap", "skinswap", "https://skinswap.com", "api", False),
     ("Skins.Cash", "skins-cash", "https://skins.cash", "api", False),
-    ("White Market", "white-market", "https://white.market", "api", False),
-    ("Lis-Skins", "lis-skins", "https://lis-skins.com", "api", False),
+    ("White Market", "white-market", "https://white.market", "api", True),
+    ("Lis-Skins", "lis-skins", "https://lis-skins.com", "api", True),
     ("Skinomat", "skinomat", "https://skinomat.com", "api", False),
     ("Aim Market", "aim-market", "https://aim.market", "api", False),
     ("Avan Market", "avan-market", "https://avan.market", "api", False),
@@ -94,7 +94,7 @@ MARKETPLACE_SEEDS = [
     ("SkinCashier", "skincashier", "https://skincashier.com", "api", False),
     ("CS.Trade", "cs-trade", "https://cs.trade", "api", False),
     ("SkinCantor", "skincantor", "https://skincantor.com", "api", False),
-    ("Skinout.gg", "skinout-gg", "https://skinout.gg", "api", False),
+    ("Skinout.gg", "skinout-gg", "https://skinout.gg", "api", True),
 ]
 
 
