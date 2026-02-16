@@ -70,8 +70,8 @@ class SwapGGScraper(BaseScraper):
                             price = float(price)
                         except ValueError:
                             continue
-                    # Swap.gg prices may be in cents
-                    if isinstance(price, (int, float)) and price > 10000:
+                    # Swap.gg prices are in cents
+                    if isinstance(price, (int, float)):
                         price = price / 100
 
                     if not name or price <= 0:

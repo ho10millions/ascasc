@@ -39,7 +39,8 @@ class LootFarmScraper(BaseScraper):
             for item in cs_data:
                 name = item.get("name", "")
                 price = item.get("price", 0)
-                if isinstance(price, (int, float)) and price > 1000:
+                # Loot.Farm prices are in cents
+                if isinstance(price, (int, float)):
                     price = price / 100
                 if not name or price <= 0:
                     continue

@@ -42,7 +42,7 @@ class WaxpeerScraper(BaseScraper):
             for name, price_info in results.items():
                 price = price_info if isinstance(price_info, (int, float)) else price_info.get("price", 0)
                 # Waxpeer prices are in thousandths of a dollar (1000 = $1)
-                if isinstance(price, (int, float)) and price > 10000:
+                if isinstance(price, (int, float)):
                     price = price / 1000
                 if price <= 0:
                     continue
@@ -56,7 +56,8 @@ class WaxpeerScraper(BaseScraper):
             for item in results:
                 name = item.get("name", "")
                 price = item.get("min", item.get("price", 0))
-                if isinstance(price, (int, float)) and price > 10000:
+                # Waxpeer prices are in thousandths of a dollar (1000 = $1)
+                if isinstance(price, (int, float)):
                     price = price / 1000
                 if not name or price <= 0:
                     continue

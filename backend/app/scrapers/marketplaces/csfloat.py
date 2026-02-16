@@ -39,7 +39,7 @@ class CSFloatScraper(BaseScraper):
                 price = listing.get("price", 0)
 
                 # CSFloat prices are in cents
-                if isinstance(price, (int, float)) and price > 100:
+                if isinstance(price, (int, float)):
                     price = price / 100
 
                 if not name or price <= 0 or name in seen_names:

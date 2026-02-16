@@ -31,7 +31,8 @@ class ITradeScraper(BaseScraper):
                         price = float(price)
                     except ValueError:
                         continue
-                if isinstance(price, (int, float)) and price > 10000:
+                # iTrade.gg prices are in cents
+                if isinstance(price, (int, float)):
                     price = price / 100
                 if not name or price <= 0:
                     continue

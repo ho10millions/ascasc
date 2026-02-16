@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
 from sqlalchemy import func, select, and_, or_
@@ -11,6 +12,15 @@ from app.models.price import PriceSnapshot
 from app.schemas.arbitrage import ArbitrageFilters
 
 STEAM_FEE_MULTIPLIER = 0.87
+
+# Ignore price snapshots older than this for arbitrage calculation
+PRICE_MAX_AGE_HOURS = 6
+
+# Maximum realistic profit percentage — anything above is likely a data error
+MAX_PROFIT_PCT = 500.0
+
+# Maximum realistic price for a single CS2 item (USD)
+MAX_SANE_PRICE_USD = 100_000.0
 
 # Marketplace sell commission rates (approximate %)
 MARKETPLACE_FEES: dict[str, float] = {
@@ -121,13 +131,17 @@ async def calculate_arbitrage_for_item(
         .values(is_active=False)
     )
 
-    # Get latest price snapshot for each marketplace
+    # Get latest price snapshot for each marketplace (ignore stale data)
+    staleness_cutoff = datetime.now(timezone.utc) - timedelta(hours=PRICE_MAX_AGE_HOURS)
     latest_sub = (
         select(
             PriceSnapshot.marketplace_id,
             func.max(PriceSnapshot.scraped_at).label("max_time"),
         )
-        .where(PriceSnapshot.item_id == item_id)
+        .where(
+            PriceSnapshot.item_id == item_id,
+            PriceSnapshot.scraped_at >= staleness_cutoff,
+        )
         .group_by(PriceSnapshot.marketplace_id)
         .subquery()
     )
@@ -151,7 +165,7 @@ async def calculate_arbitrage_for_item(
     price_map: dict[int, tuple[float, Marketplace]] = {}
     for snapshot, marketplace in results:
         price = float(snapshot.price_usd)
-        if price > 0:
+        if price > 0 and price <= MAX_SANE_PRICE_USD:
             price_map[marketplace.id] = (price, marketplace)
 
     opportunities = []
@@ -171,7 +185,7 @@ async def calculate_arbitrage_for_item(
                 continue
             profit_pct = ((sell_after_fee / buy_price) - 1) * 100
 
-            if profit_pct >= 0:
+            if 0 <= profit_pct <= MAX_PROFIT_PCT:
                 opp = ArbitrageOpportunity(
                     item_id=item_id,
                     buy_marketplace_id=buy_mp_id,

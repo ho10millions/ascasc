@@ -56,8 +56,9 @@ class RapidSkinsScraper(BaseScraper):
                     except ValueError:
                         continue
 
-                if isinstance(price, (int, float)) and price > 100:
-                    price = price / 100  # Convert cents to dollars
+                # RapidSkins prices are always in cents
+                if isinstance(price, (int, float)):
+                    price = price / 100
 
                 if not name or price <= 0:
                     continue

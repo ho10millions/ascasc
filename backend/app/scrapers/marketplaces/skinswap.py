@@ -34,8 +34,8 @@ class SkinSwapScraper(BaseScraper):
                         price = float(price)
                     except ValueError:
                         continue
-                # Convert cents to dollars if needed
-                if price > 10000:
+                # SkinSwap prices are in cents
+                if isinstance(price, (int, float)):
                     price = price / 100
 
                 if not name or price <= 0:
