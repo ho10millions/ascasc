@@ -134,8 +134,10 @@ export default function ArbitragePage() {
                 <span className={clsx(
                   "font-medium",
                   scraperStatus.last_result === "success" ? "text-emerald-400" : "text-red-400"
-                )}>
-                  {scraperStatus.last_result === "success" ? "Success" : "Error"}
+                )} title={scraperStatus.last_result !== "success" ? scraperStatus.last_result : undefined}>
+                  {scraperStatus.last_result === "success"
+                    ? "Success"
+                    : scraperStatus.last_result.replace("error: ", "").slice(0, 80) || "Error"}
                 </span>
               </div>
             )}

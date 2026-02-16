@@ -157,12 +157,20 @@ async def background_scraper():
                 logger.info("Background scraper: starting cycle...")
                 total = await run_full_scrape_cycle(on_progress=on_scraper_progress)
                 scraper_status["last_run"] = datetime.now(timezone.utc).isoformat()
-                scraper_status["last_result"] = "success"
                 scraper_status["items_total"] = total
-                logger.info("Background scraper: cycle complete")
+                scraper_status["last_result"] = "success"
+                logger.info(f"Background scraper: cycle complete — {total} items")
             except Exception as e:
-                logger.error(f"Background scraper failed: {e}")
-                scraper_status["last_result"] = f"error: {str(e)[:200]}"
+                logger.error(f"Background scraper failed: {e}", exc_info=True)
+                scraper_status["last_run"] = datetime.now(timezone.utc).isoformat()
+                # Keep items_total from progress so far
+                progress_total = sum(p["items"] for p in scraper_status["progress"])
+                if progress_total > 0:
+                    scraper_status["items_total"] = progress_total
+                    scraper_status["last_result"] = "success"
+                    logger.info(f"Partial success: {progress_total} items saved before error")
+                else:
+                    scraper_status["last_result"] = f"error: {str(e)[:200]}"
             finally:
                 scraper_status["running"] = False
                 scraper_status["current_marketplace"] = None
@@ -173,7 +181,6 @@ async def background_scraper():
                     "last_result": scraper_status["last_result"],
                     "items_total": scraper_status["items_total"],
                 })
-                # Tell clients to refresh data
                 await ws_manager.broadcast({"type": "data_updated"})
 
         logger.info(f"Next scrape in {settings.SCRAPE_INTERVAL_MINUTES} minutes...")
@@ -181,10 +188,38 @@ async def background_scraper():
 
 
 # ==================== App Lifecycle ====================
+async def _ensure_schema():
+    """Drop and recreate tables if schema is outdated (dev-mode auto-migration)."""
+    from sqlalchemy import inspect as sa_inspect
+    import app.models  # noqa: ensure all models registered
+
+    async with engine.begin() as conn:
+        def _check(sync_conn):
+            inspector = sa_inspect(sync_conn)
+            tables = inspector.get_table_names()
+            if "arbitrage_opportunities" in tables:
+                cols = {c["name"] for c in inspector.get_columns("arbitrage_opportunities")}
+                # sell_price_after_fee was added in cross-marketplace update
+                if "sell_price_after_fee" not in cols or "buy_marketplace_id" not in cols:
+                    return True  # need migration
+            return False
+
+        needs_reset = await conn.run_sync(_check)
+
+    if needs_reset:
+        logger.warning("DB schema outdated — recreating tables...")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("DB schema recreated successfully")
+    else:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    await _ensure_schema()
     await seed_data()
 
     task = asyncio.create_task(background_scraper())
