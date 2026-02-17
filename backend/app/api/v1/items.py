@@ -67,8 +67,7 @@ async def get_item_price_comparison(
         if p["marketplace_slug"] == "steam":
             steam_price = p["price_usd"]
             steam_after_fee = round(steam_price * 0.87, 2)
-        else:
-            price_entries.append(PriceComparisonEntry(**p))
+        price_entries.append(PriceComparisonEntry(**p))
 
     return ItemPriceComparison(
         item_id=item.id,
