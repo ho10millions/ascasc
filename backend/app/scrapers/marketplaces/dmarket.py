@@ -1,9 +1,16 @@
-"""DMarket.com scraper - uses public API (no auth required)."""
+"""DMarket.com scraper - uses public API (no auth required).
+
+Prices are in cents as strings, e.g. {"USD": "245"} = $2.45.
+Docs: https://docs.dmarket.com/v1/swagger.html
+"""
 
 import asyncio
+import logging
 
 from app.scrapers.base import BaseScraper, ScrapedItem
 from app.scrapers.utils import fetch_json, classify_item_type
+
+logger = logging.getLogger(__name__)
 
 
 class DMarketScraper(BaseScraper):
@@ -16,9 +23,9 @@ class DMarketScraper(BaseScraper):
     async def scrape(self) -> list[ScrapedItem]:
         items = []
         cursor = ""
-        seen_names: set[str] = set()
+        seen_names: dict[str, float] = {}
 
-        for _ in range(50):  # Max 50 pages
+        for page in range(50):  # Max 50 pages
             params = {
                 "side": "market",
                 "orderBy": "price",
@@ -39,29 +46,39 @@ class DMarketScraper(BaseScraper):
                 break
 
             for obj in objects:
-                name = obj.get("title", "")
-                if not name or name in seen_names:
-                    continue
-
-                price_data = obj.get("price", {})
-                # DMarket returns prices in cents as strings, e.g. {"USD": "245"}
-                raw_price = price_data.get("USD", "0")
                 try:
-                    price = float(raw_price) / 100
-                except (ValueError, TypeError):
-                    continue
+                    name = obj.get("title", "")
+                    if not name:
+                        continue
 
-                if price <= 0:
-                    continue
+                    price_data = obj.get("price", {})
+                    # DMarket returns prices in cents as strings, e.g. {"USD": "245"}
+                    raw_price = price_data.get("USD", "0")
+                    try:
+                        price = float(raw_price) / 100
+                    except (ValueError, TypeError):
+                        continue
 
-                seen_names.add(name)
-                items.append(ScrapedItem(
-                    market_hash_name=name,
-                    price_usd=round(price, 2),
-                    game="cs2",
-                    icon_url=obj.get("image"),
-                    item_type=classify_item_type(name),
-                ))
+                    if price <= 0:
+                        continue
+
+                    # Deduplicate — keep cheapest price per item name
+                    if name in seen_names:
+                        if price < seen_names[name]:
+                            seen_names[name] = price
+                        continue
+
+                    seen_names[name] = price
+                    items.append(ScrapedItem(
+                        market_hash_name=name,
+                        price_usd=round(price, 2),
+                        game="cs2",
+                        icon_url=obj.get("image"),
+                        item_type=classify_item_type(name),
+                    ))
+                except Exception as e:
+                    logger.debug(f"DMarket: error parsing item: {e}")
+                    continue
 
             cursor = data.get("cursor", "")
             if not cursor:
@@ -70,4 +87,10 @@ class DMarketScraper(BaseScraper):
             # Rate limit: small delay between pages
             await asyncio.sleep(0.5)
 
+        # Update prices for deduplicated items
+        for item in items:
+            if item.market_hash_name in seen_names:
+                item.price_usd = round(seen_names[item.market_hash_name], 2)
+
+        logger.info(f"DMarket: scraped {len(items)} unique items")
         return items

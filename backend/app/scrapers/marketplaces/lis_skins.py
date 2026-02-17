@@ -1,5 +1,10 @@
-"""Lis-Skins.com scraper - uses official Public User API (/v1/market/search)."""
+"""Lis-Skins.com scraper - uses official Public User API (/v1/market/search).
 
+Prices are returned as floats in USD (e.g. 12.50 = $12.50).
+Docs: https://lis-skins-ru.stoplight.io/docs/lis-skins-ru-public-user-api
+"""
+
+import asyncio
 import logging
 
 from app.scrapers.base import BaseScraper, ScrapedItem
@@ -18,7 +23,9 @@ class LisSkinsScraper(BaseScraper):
 
     async def scrape(self) -> list[ScrapedItem]:
         items = []
+        seen_names: dict[str, float] = {}
         page = 1
+
         while page <= 50:
             data = await fetch_json(
                 self.API_URL,
@@ -32,29 +39,46 @@ class LisSkinsScraper(BaseScraper):
                 break
 
             for item in results:
-                name = item.get("market_hash_name") or item.get("name", "")
-                price = item.get("price", 0)
-                if isinstance(price, str):
-                    try:
-                        price = float(price)
-                    except ValueError:
-                        continue
-                # Convert cents to dollars if price seems too large
-                if isinstance(price, (int, float)) and price > 10000:
-                    price = price / 100
+                try:
+                    name = item.get("market_hash_name") or item.get("name", "")
+                    price = item.get("price", 0)
+                    if isinstance(price, str):
+                        try:
+                            price = float(price)
+                        except ValueError:
+                            continue
 
-                if not name or price <= 0:
+                    if not isinstance(price, (int, float)) or not name or price <= 0:
+                        continue
+
+                    price = float(price)
+
+                    # Deduplicate — keep cheapest price per item name
+                    if name in seen_names:
+                        if price < seen_names[name]:
+                            seen_names[name] = price
+                        continue
+
+                    seen_names[name] = price
+                    items.append(ScrapedItem(
+                        market_hash_name=name,
+                        price_usd=round(price, 2),
+                        game="cs2",
+                        icon_url=item.get("image") or item.get("icon_url"),
+                        item_type=classify_item_type(name),
+                    ))
+                except Exception as e:
+                    logger.debug(f"Lis-Skins: error parsing item: {e}")
                     continue
 
-                items.append(ScrapedItem(
-                    market_hash_name=name,
-                    price_usd=round(float(price), 2),
-                    game="cs2",
-                    icon_url=item.get("image") or item.get("icon_url"),
-                    item_type=classify_item_type(name),
-                ))
-
             page += 1
+            # Rate limit: small delay between pages
+            await asyncio.sleep(0.5)
 
-        logger.info(f"Lis-Skins: scraped {len(items)} items")
+        # Update prices for deduplicated items
+        for item in items:
+            if item.market_hash_name in seen_names:
+                item.price_usd = round(seen_names[item.market_hash_name], 2)
+
+        logger.info(f"Lis-Skins: scraped {len(items)} unique items")
         return items
