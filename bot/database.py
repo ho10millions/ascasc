@@ -8,9 +8,10 @@ from config import config
 DB_PATH = config.DB_PATH
 
 PERIODS = {
-    "week": {"days": 7, "label": "1 неделя", "price": config.PRICE_WEEK},
-    "month": {"days": 30, "label": "1 месяц", "price": config.PRICE_MONTH},
-    "3months": {"days": 90, "label": "3 месяца", "price": config.PRICE_3MONTHS},
+    "1min":   {"seconds": 60,               "label": "1 минута (тест)", "price": config.PRICE_1MIN},
+    "week":   {"seconds": 7 * 24 * 3600,   "label": "1 неделя",        "price": config.PRICE_WEEK},
+    "month":  {"seconds": 30 * 24 * 3600,  "label": "1 месяц",         "price": config.PRICE_MONTH},
+    "3months":{"seconds": 90 * 24 * 3600,  "label": "3 месяца",        "price": config.PRICE_3MONTHS},
 }
 
 
@@ -107,9 +108,9 @@ async def approve_subscription(sub_id: int, admin_id: int):
             row = await cur.fetchone()
         if not row:
             return None
-        days = PERIODS[row["period"]]["days"]
+        seconds = PERIODS[row["period"]]["seconds"]
         now = datetime.utcnow()
-        expires_at = (now + timedelta(days=days)).isoformat()
+        expires_at = (now + timedelta(seconds=seconds)).isoformat()
         await db.execute("""
             UPDATE subscriptions
             SET status = 'active', approved_at = ?, approved_by = ?, expires_at = ?

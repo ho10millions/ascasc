@@ -17,6 +17,7 @@ class Config:
     PAYMENT_HOLDER: str = os.environ.get("PAYMENT_HOLDER", "Иванова Анна Сергеевна")
 
     # Prices for each period (in RUB)
+    PRICE_1MIN: int = int(os.environ.get("PRICE_1MIN", "10"))
     PRICE_WEEK: int = int(os.environ.get("PRICE_WEEK", "1000"))
     PRICE_MONTH: int = int(os.environ.get("PRICE_MONTH", "3000"))
     PRICE_3MONTHS: int = int(os.environ.get("PRICE_3MONTHS", "7500"))
